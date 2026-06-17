@@ -27,7 +27,7 @@ class Complaint
             ':reason' => $data['reason']
         ]);
         
-        return (int)$db->lastInsertId();
+        return (int)$db->lastInsertId('complaints_id_seq');
     }
 
     /**

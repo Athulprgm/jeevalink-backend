@@ -49,11 +49,11 @@ class User
             ':date_of_birth' => $data['date_of_birth'] ?? null,
             ':last_donated_date' => $data['last_donated_date'] ?? null,
             ':profile_picture' => $data['profile_picture'] ?? null,
-            ':available_for_donation' => $available ? 1 : 0,
+            ':available_for_donation' => $available,
             ':status' => $status
         ]);
 
-        return (int)$db->lastInsertId();
+        return (int)$db->lastInsertId('users_id_seq');
     }
 
     /**
@@ -123,7 +123,7 @@ class User
 
         foreach ($allowedFields as $field) {
             if (array_key_exists($field, $data)) {
-                $fields[] = "`{$field}` = :{$field}";
+                $fields[] = "{$field} = :{$field}";
                 $params[":{$field}"] = $data[$field];
             }
         }
@@ -193,7 +193,7 @@ class User
         if (!in_array($field, $allowed, true)) {
             return false;
         }
-        $stmt = $db->prepare("UPDATE users SET `{$field}` = `{$field}` + ? WHERE id = ?");
+        $stmt = $db->prepare("UPDATE users SET {$field} = {$field} + ? WHERE id = ?");
         return $stmt->execute([$amount, $id]);
     }
 

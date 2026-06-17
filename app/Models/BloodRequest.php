@@ -47,10 +47,10 @@ class BloodRequest
             ':required_by_date' => $data['required_by_date'],
             ':urgency_level' => $data['urgency_level'] ?? 'Normal',
             ':additional_notes' => $data['additional_notes'] ?? null,
-            ':verified' => isset($data['verified']) ? (int)$data['verified'] : 0
+            ':verified' => isset($data['verified']) ? (bool)$data['verified'] : false
         ]);
 
-        return (int)$db->lastInsertId();
+        return (int)$db->lastInsertId('blood_requests_id_seq');
     }
 
     /**
@@ -118,7 +118,7 @@ class BloodRequest
 
         if (isset($filters['verified']) && $filters['verified'] !== '') {
             $sql .= " AND br.verified = :verified";
-            $params[':verified'] = (bool)$filters['verified'] ? 1 : 0;
+            $params[':verified'] = (bool)$filters['verified'];
         }
 
         $sql .= " ORDER BY br.created_at DESC";
@@ -151,7 +151,7 @@ class BloodRequest
     public static function verify(int $id): bool
     {
         $db = Database::getConnection();
-        $stmt = $db->prepare("UPDATE blood_requests SET verified = 1 WHERE id = ?");
+        $stmt = $db->prepare("UPDATE blood_requests SET verified = TRUE WHERE id = ?");
         return $stmt->execute([$id]);
     }
 

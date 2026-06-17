@@ -18,7 +18,7 @@ class Notification
         $db = Database::getConnection();
         
         $sql = "INSERT INTO notifications (recipient_id, title, message, type, is_read, created_at) 
-                VALUES (:recipient_id, :title, :message, :type, 0, CURRENT_TIMESTAMP)";
+                VALUES (:recipient_id, :title, :message, :type, FALSE, CURRENT_TIMESTAMP)";
                 
         $stmt = $db->prepare($sql);
         $stmt->execute([
@@ -28,7 +28,7 @@ class Notification
             ':type' => $data['type']
         ]);
         
-        return (int)$db->lastInsertId();
+        return (int)$db->lastInsertId('notifications_id_seq');
     }
 
     /**
@@ -55,7 +55,7 @@ class Notification
     public static function markAsRead(int $id, int $recipientId): bool
     {
         $db = Database::getConnection();
-        $stmt = $db->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND recipient_id = ?");
+        $stmt = $db->prepare("UPDATE notifications SET is_read = TRUE WHERE id = ? AND recipient_id = ?");
         return $stmt->execute([$id, $recipientId]);
     }
 
@@ -68,7 +68,7 @@ class Notification
     public static function markAllAsRead(int $recipientId): bool
     {
         $db = Database::getConnection();
-        $stmt = $db->prepare("UPDATE notifications SET is_read = 1 WHERE recipient_id = ?");
+        $stmt = $db->prepare("UPDATE notifications SET is_read = TRUE WHERE recipient_id = ?");
         return $stmt->execute([$recipientId]);
     }
 }

@@ -17,14 +17,14 @@ class Database
     public static function getConnection(): PDO
     {
         if (self::$connection === null) {
-            $host = $_ENV['DB_HOST'] ?? '127.0.0.1';
-            $port = $_ENV['DB_PORT'] ?? '3306';
-            $dbName = $_ENV['DB_NAME'] ?? 'jeevalink';
-            $username = $_ENV['DB_USER'] ?? 'root';
-            $password = $_ENV['DB_PASSWORD'] ?? '';
+            $host = $_ENV['PGHOST'] ?? '127.0.0.1';
+            $port = $_ENV['PGPORT'] ?? '5432';
+            $dbName = $_ENV['PGDATABASE'] ?? 'jeevalink';
+            $username = $_ENV['PGUSER'] ?? 'postgres';
+            $password = $_ENV['PGPASSWORD'] ?? '';
 
             try {
-                $dsn = "mysql:host={$host};port={$port};dbname={$dbName};charset=utf8mb4";
+                $dsn = "pgsql:host={$host};port={$port};dbname={$dbName}";
                 self::$connection = new PDO($dsn, $username, $password, [
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
