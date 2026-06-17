@@ -24,20 +24,18 @@ RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interactio
 # Copy application files
 COPY . .
 
-# Run composer scripts and cache
-RUN composer run-script post-autoload-dump --no-interaction || true \
-    && php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan view:cache
+# Run composer post-install scripts (register autoloaders etc.)
+RUN composer run-script post-autoload-dump --no-interaction || true
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
     && chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
+# Copy and prepare entrypoint
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+# Railway injects PORT dynamically — do NOT hardcode
 EXPOSE 8080
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8080"]
