@@ -1,0 +1,299 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\User;
+use App\Helpers\JWT;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
+
+class AuthController extends Controller
+{
+    /**
+     * Handle user registration.
+     */
+    public function register(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'full_name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'mobile' => 'required|string|max:20',
+            'password' => 'required|string|min:6',
+            'role' => 'required|in:donor,volunteer,hospital,admin',
+            'city' => 'required|string|max:100',
+            'district' => 'required|string|max:100',
+            'blood_group' => 'nullable|in:A+,A-,B+,B-,AB+,AB-,O+,O-,N/A',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Check unique constraints manually to replicate original 409 behavior
+        if (User::where('email', $request->email)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Email already in use',
+                'errors' => ['email' => ['This email address is already registered.']]
+            ], 409);
+        }
+
+        if (User::where('mobile', $request->mobile)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Mobile number already in use',
+                'errors' => ['mobile' => ['This mobile number is already registered.']]
+            ], 409);
+        }
+
+        // Set status
+        $status = ($request->role === 'hospital') ? 'Pending Approval' : 'Active';
+        $available = $request->has('available_for_donation') ? (bool)$request->available_for_donation : true;
+
+        $user = User::create([
+            'full_name' => $request->full_name,
+            'email' => $request->email,
+            'mobile' => $request->mobile,
+            'password_hash' => Hash::make($request->password),
+            'role' => $request->role,
+            'blood_group' => $request->blood_group ?? 'N/A',
+            'city' => $request->city,
+            'district' => $request->district,
+            'address' => $request->address ?? null,
+            'weight' => $request->weight ?? null,
+            'date_of_birth' => $request->date_of_birth ?? null,
+            'last_donated_date' => $request->last_donated_date ?? null,
+            'profile_picture' => $request->profile_picture ?? null,
+            'available_for_donation' => $available,
+            'status' => $status
+        ]);
+
+        $token = JWT::generateToken($user->id, $user->role);
+
+        // Retrieve fresh user info to match findById query results
+        $userData = User::findById($user->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User registered successfully.',
+            'data' => [
+                'token' => $token,
+                'user' => $userData
+            ]
+        ], 210);
+    }
+
+    /**
+     * Handle user authentication login.
+     */
+    public function login(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'credential' => 'required|string',
+            'password' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $credential = trim($request->credential);
+        $password = $request->password;
+
+        // Find user by email first, then mobile
+        $user = null;
+        if (filter_var($credential, FILTER_VALIDATE_EMAIL)) {
+            $user = User::where('email', $credential)->first();
+        } else {
+            $user = User::where('mobile', $credential)->first();
+        }
+
+        if (!$user || !Hash::check($password, $user->password_hash)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid login credentials.',
+                'errors' => []
+            ], 401);
+        }
+
+        // Check if user is suspended/rejected
+        if (in_array($user->status, ['Suspended', 'Rejected'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => "Your account has been {$user->status}. Please contact support.",
+                'errors' => []
+            ], 403);
+        }
+
+        $token = JWT::generateToken($user->id, $user->role);
+        $profile = User::findById($user->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Authentication successful.',
+            'data' => [
+                'token' => $token,
+                'user' => $profile
+            ]
+        ]);
+    }
+
+    /**
+     * Get details of currently authenticated user.
+     */
+    public function me(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User profile not found.',
+                'errors' => []
+            ], 404);
+        }
+
+        $profile = User::findById($user->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profile retrieved successfully.',
+            'data' => [
+                'user' => $profile
+            ]
+        ]);
+    }
+
+    /**
+     * Update user profile information.
+     */
+    public function profile(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found.',
+                'errors' => []
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'blood_group' => 'nullable|in:A+,A-,B+,B-,AB+,AB-,O+,O-,N/A',
+            'date_of_birth' => 'nullable|date_format:Y-m-d',
+            'last_donated_date' => 'nullable|date_format:Y-m-d',
+            'weight' => 'nullable|numeric',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $updated = User::updateProfile($user->id, $request->all());
+
+        if (!$updated) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No profile updates were made.',
+                'errors' => []
+            ], 400);
+        }
+
+        $profile = User::findById($user->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profile updated successfully.',
+            'data' => [
+                'user' => $profile
+            ]
+        ]);
+    }
+
+    /**
+     * Toggle active availability state for blood donations.
+     */
+    public function toggleAvailability(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found.',
+                'errors' => []
+            ], 404);
+        }
+
+        $toggled = User::toggleAvailability($user->id);
+
+        if (!$toggled) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update availability status.',
+                'errors' => []
+            ], 500);
+        }
+
+        $freshUser = User::find($user->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Availability status updated successfully.',
+            'data' => [
+                'available_for_donation' => (bool)$freshUser->available_for_donation
+            ]
+        ]);
+    }
+
+    /**
+     * Store push notification token.
+     */
+    public function pushToken(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found.',
+                'errors' => []
+            ], 404);
+        }
+
+        if (!$request->has('push_token')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Missing parameter: push_token',
+                'errors' => []
+            ], 400);
+        }
+
+        $updated = User::updatePushToken($user->id, $request->push_token);
+
+        if (!$updated) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to store push token.',
+                'errors' => []
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Push notification token updated successfully.',
+            'data' => []
+        ]);
+    }
+}

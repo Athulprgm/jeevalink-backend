@@ -77,7 +77,7 @@ class FCMService
      */
     private static function sendFCMNotification(string $token, string $title, string $body, array $data): bool
     {
-        $serverKey = $_ENV['FCM_SERVER_KEY'] ?? '';
+        $serverKey = env('FCM_SERVER_KEY', '');
         if (empty($serverKey) || $serverKey === 'mock_fcm_server_key') {
             // Log for development environment if FCM server key is not configured
             error_log("[FCM MOCK] Push notification to: {$token} | Title: {$title} | Body: {$body}");

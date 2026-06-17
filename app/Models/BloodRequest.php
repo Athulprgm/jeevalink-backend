@@ -2,55 +2,52 @@
 
 namespace App\Models;
 
-use App\Config\Database;
-use PDO;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-class BloodRequest
+class BloodRequest extends Model
 {
-    /**
-     * Create a new blood request.
-     *
-     * @param array $data
-     * @return int Inserted ID
-     */
-    public static function create(array $data): int
+    use HasFactory;
+
+    protected $table = 'blood_requests';
+
+    protected $fillable = [
+        'requested_by',
+        'patient_name',
+        'blood_group',
+        'units_required',
+        'hospital_name',
+        'hospital_address',
+        'city',
+        'district',
+        'location',
+        'contact_number',
+        'contact_person_name',
+        'required_by_date',
+        'urgency_level',
+        'additional_notes',
+        'status',
+        'verified',
+        'fulfilled_by'
+    ];
+
+    protected function casts(): array
     {
-        $db = Database::getConnection();
-        
-        $sql = "INSERT INTO blood_requests (
-                    requested_by, patient_name, blood_group, units_required, 
-                    hospital_name, hospital_address, city, district, location, 
-                    contact_number, contact_person_name, required_by_date, 
-                    urgency_level, additional_notes, status, verified
-                ) VALUES (
-                    :requested_by, :patient_name, :blood_group, :units_required, 
-                    :hospital_name, :hospital_address, :city, :district, :location, 
-                    :contact_number, :contact_person_name, :required_by_date, 
-                    :urgency_level, :additional_notes, 'Pending', :verified
-                )";
+        return [
+            'required_by_date' => 'datetime',
+            'verified' => 'boolean',
+            'units_required' => 'integer',
+        ];
+    }
 
-        $stmt = $db->prepare($sql);
-        
-        // If urgency level is Emergency SOS, verified is automatically true or false depending on business rules (let's keep false unless volunteer verifies)
-        $stmt->execute([
-            ':requested_by' => $data['requested_by'],
-            ':patient_name' => $data['patient_name'],
-            ':blood_group' => $data['blood_group'],
-            ':units_required' => (int)$data['units_required'],
-            ':hospital_name' => $data['hospital_name'],
-            ':hospital_address' => $data['hospital_address'] ?? null,
-            ':city' => $data['city'],
-            ':district' => $data['district'],
-            ':location' => $data['location'] ?? null,
-            ':contact_number' => $data['contact_number'],
-            ':contact_person_name' => $data['contact_person_name'] ?? null,
-            ':required_by_date' => $data['required_by_date'],
-            ':urgency_level' => $data['urgency_level'] ?? 'Normal',
-            ':additional_notes' => $data['additional_notes'] ?? null,
-            ':verified' => isset($data['verified']) ? (bool)$data['verified'] : false
-        ]);
+    public function requester()
+    {
+        return $this->belongsTo(User::class, 'requested_by');
+    }
 
-        return (int)$db->lastInsertId('blood_requests_id_seq');
+    public function fulfiller()
+    {
+        return $this->belongsTo(User::class, 'fulfilled_by');
     }
 
     /**
@@ -61,17 +58,14 @@ class BloodRequest
      */
     public static function findById(int $id): ?array
     {
-        $db = Database::getConnection();
-        
-        $sql = "SELECT br.*, u.full_name AS requester_name, u.email AS requester_email 
-                FROM blood_requests br
-                JOIN users u ON br.requested_by = u.id
-                WHERE br.id = ? LIMIT 1";
-                
-        $stmt = $db->prepare($sql);
-        $stmt->execute([$id]);
-        $request = $stmt->fetch();
-        return $request ?: null;
+        $request = self::with('requester')->find($id);
+        if ($request) {
+            $arr = $request->toArray();
+            $arr['requester_name'] = $request->requester->full_name ?? null;
+            $arr['requester_email'] = $request->requester->email ?? null;
+            return $arr;
+        }
+        return null;
     }
 
     /**
@@ -82,50 +76,41 @@ class BloodRequest
      */
     public static function getAll(array $filters): array
     {
-        $db = Database::getConnection();
-        
-        $sql = "SELECT br.*, u.full_name AS requester_name, u.email AS requester_email, u.profile_picture AS requester_picture 
-                FROM blood_requests br
-                JOIN users u ON br.requested_by = u.id
-                WHERE 1 = 1";
-                
-        $params = [];
+        $query = self::with('requester');
 
         if (!empty($filters['bloodGroup'])) {
-            $sql .= " AND br.blood_group = :blood_group";
-            $params[':blood_group'] = $filters['bloodGroup'];
+            $query->where('blood_group', $filters['bloodGroup']);
         }
 
         if (!empty($filters['district'])) {
-            $sql .= " AND br.district = :district";
-            $params[':district'] = $filters['district'];
+            $query->where('district', $filters['district']);
         }
 
         if (!empty($filters['city'])) {
-            $sql .= " AND br.city = :city";
-            $params[':city'] = $filters['city'];
+            $query->where('city', $filters['city']);
         }
 
         if (!empty($filters['urgencyLevel'])) {
-            $sql .= " AND br.urgency_level = :urgency_level";
-            $params[':urgency_level'] = $filters['urgencyLevel'];
+            $query->where('urgency_level', $filters['urgencyLevel']);
         }
 
         if (!empty($filters['status'])) {
-            $sql .= " AND br.status = :status";
-            $params[':status'] = $filters['status'];
+            $query->where('status', $filters['status']);
         }
 
         if (isset($filters['verified']) && $filters['verified'] !== '') {
-            $sql .= " AND br.verified = :verified";
-            $params[':verified'] = (bool)$filters['verified'];
+            $query->where('verified', filter_var($filters['verified'], FILTER_VALIDATE_BOOLEAN));
         }
 
-        $sql .= " ORDER BY br.created_at DESC";
+        $requests = $query->orderBy('created_at', 'desc')->get();
 
-        $stmt = $db->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll();
+        return $requests->map(function ($req) {
+            $arr = $req->toArray();
+            $arr['requester_name'] = $req->requester->full_name ?? null;
+            $arr['requester_email'] = $req->requester->email ?? null;
+            $arr['requester_picture'] = $req->requester->profile_picture ?? null;
+            return $arr;
+        })->toArray();
     }
 
     /**
@@ -137,9 +122,13 @@ class BloodRequest
      */
     public static function fulfill(int $id, int $fulfilledBy): bool
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("UPDATE blood_requests SET status = 'Fulfilled', fulfilled_by = ? WHERE id = ?");
-        return $stmt->execute([$fulfilledBy, $id]);
+        $request = self::find($id);
+        if ($request) {
+            $request->status = 'Fulfilled';
+            $request->fulfilled_by = $fulfilledBy;
+            return $request->save();
+        }
+        return false;
     }
 
     /**
@@ -150,9 +139,12 @@ class BloodRequest
      */
     public static function verify(int $id): bool
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("UPDATE blood_requests SET verified = TRUE WHERE id = ?");
-        return $stmt->execute([$id]);
+        $request = self::find($id);
+        if ($request) {
+            $request->verified = true;
+            return $request->save();
+        }
+        return false;
     }
 
     /**
@@ -161,10 +153,12 @@ class BloodRequest
      * @param int $id
      * @return bool
      */
-    public static function delete(int $id): bool
+    public static function deleteRequest(int $id): bool
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("DELETE FROM blood_requests WHERE id = ?");
-        return $stmt->execute([$id]);
+        $request = self::find($id);
+        if ($request) {
+            return $request->delete();
+        }
+        return false;
     }
 }

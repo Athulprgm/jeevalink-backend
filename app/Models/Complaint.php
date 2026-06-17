@@ -2,32 +2,50 @@
 
 namespace App\Models;
 
-use App\Config\Database;
-use PDO;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-class Complaint
+class Complaint extends Model
 {
+    use HasFactory;
+
+    protected $table = 'complaints';
+
+    // Disable standard Laravel timestamps because the table has only created_at
+    const UPDATED_AT = null;
+
+    protected $fillable = [
+        'reporter_id',
+        'target_id',
+        'reason',
+        'status'
+    ];
+
+    public function reporter()
+    {
+        return $this->belongsTo(User::class, 'reporter_id');
+    }
+
+    public function target()
+    {
+        return $this->belongsTo(User::class, 'target_id');
+    }
+
     /**
      * Create a new complaint.
      *
      * @param array $data
      * @return int Inserted ID
      */
-    public static function create(array $data): int
+    public static function createComplaint(array $data): int
     {
-        $db = Database::getConnection();
-        
-        $sql = "INSERT INTO complaints (reporter_id, target_id, reason, status, created_at) 
-                VALUES (:reporter_id, :target_id, :reason, 'Pending', CURRENT_TIMESTAMP)";
-                
-        $stmt = $db->prepare($sql);
-        $stmt->execute([
-            ':reporter_id' => $data['reporter_id'],
-            ':target_id' => $data['target_id'],
-            ':reason' => $data['reason']
+        $complaint = self::create([
+            'reporter_id' => $data['reporter_id'],
+            'target_id' => $data['target_id'],
+            'reason' => $data['reason'],
+            'status' => 'Pending'
         ]);
-        
-        return (int)$db->lastInsertId('complaints_id_seq');
+        return $complaint->id;
     }
 
     /**
@@ -38,20 +56,14 @@ class Complaint
      */
     public static function findById(int $id): ?array
     {
-        $db = Database::getConnection();
-        
-        $sql = "SELECT c.*, 
-                       u1.full_name AS reporter_name, 
-                       u2.full_name AS target_name 
-                FROM complaints c
-                JOIN users u1 ON c.reporter_id = u1.id
-                JOIN users u2 ON c.target_id = u2.id
-                WHERE c.id = ? LIMIT 1";
-                
-        $stmt = $db->prepare($sql);
-        $stmt->execute([$id]);
-        $complaint = $stmt->fetch();
-        return $complaint ?: null;
+        $complaint = self::with(['reporter', 'target'])->find($id);
+        if ($complaint) {
+            $arr = $complaint->toArray();
+            $arr['reporter_name'] = $complaint->reporter->full_name ?? null;
+            $arr['target_name'] = $complaint->target->full_name ?? null;
+            return $arr;
+        }
+        return null;
     }
 
     /**
@@ -61,18 +73,16 @@ class Complaint
      */
     public static function getAll(): array
     {
-        $db = Database::getConnection();
-        
-        $sql = "SELECT c.id, c.reporter_id, c.target_id, c.reason, c.status, c.created_at,
-                       u1.full_name AS reporter_name, 
-                       u2.full_name AS target_name 
-                FROM complaints c
-                JOIN users u1 ON c.reporter_id = u1.id
-                JOIN users u2 ON c.target_id = u2.id
-                ORDER BY c.created_at DESC";
-                
-        $stmt = $db->query($sql);
-        return $stmt->fetchAll();
+        $complaints = self::with(['reporter', 'target'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return $complaints->map(function ($complaint) {
+            $arr = $complaint->toArray();
+            $arr['reporter_name'] = $complaint->reporter->full_name ?? null;
+            $arr['target_name'] = $complaint->target->full_name ?? null;
+            return $arr;
+        })->toArray();
     }
 
     /**
@@ -83,8 +93,11 @@ class Complaint
      */
     public static function resolve(int $id): bool
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("UPDATE complaints SET status = 'Resolved' WHERE id = ?");
-        return $stmt->execute([$id]);
+        $complaint = self::find($id);
+        if ($complaint) {
+            $complaint->status = 'Resolved';
+            return $complaint->save();
+        }
+        return false;
     }
 }

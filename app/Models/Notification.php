@@ -2,33 +2,55 @@
 
 namespace App\Models;
 
-use App\Config\Database;
-use PDO;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-class Notification
+class Notification extends Model
 {
+    use HasFactory;
+
+    protected $table = 'notifications';
+
+    // Disable standard Laravel timestamps because the table has only created_at
+    const UPDATED_AT = null;
+
+    protected $fillable = [
+        'recipient_id',
+        'title',
+        'message',
+        'type',
+        'is_read'
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_read' => 'boolean',
+        ];
+    }
+
+    public function recipient()
+    {
+        return $this->belongsTo(User::class, 'recipient_id');
+    }
+
     /**
      * Create a new notification.
+     * Overriding or providing a static creation wrapper.
      *
      * @param array $data
      * @return int Inserted ID
      */
-    public static function create(array $data): int
+    public static function createNotification(array $data): int
     {
-        $db = Database::getConnection();
-        
-        $sql = "INSERT INTO notifications (recipient_id, title, message, type, is_read, created_at) 
-                VALUES (:recipient_id, :title, :message, :type, FALSE, CURRENT_TIMESTAMP)";
-                
-        $stmt = $db->prepare($sql);
-        $stmt->execute([
-            ':recipient_id' => $data['recipient_id'],
-            ':title' => $data['title'],
-            ':message' => $data['message'],
-            ':type' => $data['type']
+        $notif = self::create([
+            'recipient_id' => $data['recipient_id'],
+            'title' => $data['title'],
+            'message' => $data['message'],
+            'type' => $data['type'],
+            'is_read' => false
         ]);
-        
-        return (int)$db->lastInsertId('notifications_id_seq');
+        return $notif->id;
     }
 
     /**
@@ -39,10 +61,10 @@ class Notification
      */
     public static function getByRecipient(int $recipientId): array
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("SELECT * FROM notifications WHERE recipient_id = ? ORDER BY created_at DESC");
-        $stmt->execute([$recipientId]);
-        return $stmt->fetchAll();
+        return self::where('recipient_id', $recipientId)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->toArray();
     }
 
     /**
@@ -54,9 +76,14 @@ class Notification
      */
     public static function markAsRead(int $id, int $recipientId): bool
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("UPDATE notifications SET is_read = TRUE WHERE id = ? AND recipient_id = ?");
-        return $stmt->execute([$id, $recipientId]);
+        $notif = self::where('id', $id)
+            ->where('recipient_id', $recipientId)
+            ->first();
+        if ($notif) {
+            $notif->is_read = true;
+            return $notif->save();
+        }
+        return false;
     }
 
     /**
@@ -67,8 +94,7 @@ class Notification
      */
     public static function markAllAsRead(int $recipientId): bool
     {
-        $db = Database::getConnection();
-        $stmt = $db->prepare("UPDATE notifications SET is_read = TRUE WHERE recipient_id = ?");
-        return $stmt->execute([$recipientId]);
+        return self::where('recipient_id', $recipientId)
+            ->update(['is_read' => true]) >= 0;
     }
 }
