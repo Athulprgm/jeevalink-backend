@@ -18,6 +18,7 @@ class Database
     {
         if (self::$connection === null) {
             $dbUrl = $_ENV['DATABASE_URL'] ?? getenv('DATABASE_URL') ?? null;
+            $sslmode = 'prefer';
             if ($dbUrl) {
                 $url = parse_url($dbUrl);
                 $host = $url['host'] ?? '127.0.0.1';
@@ -25,6 +26,12 @@ class Database
                 $dbName = isset($url['path']) ? ltrim($url['path'], '/') : 'jeevalink';
                 $username = $url['user'] ?? 'postgres';
                 $password = $url['pass'] ?? '';
+                if (isset($url['query'])) {
+                    parse_str($url['query'], $queryParams);
+                    if (isset($queryParams['sslmode'])) {
+                        $sslmode = $queryParams['sslmode'];
+                    }
+                }
             } else {
                 $host = $_ENV['PGHOST'] ?? '127.0.0.1';
                 $port = $_ENV['PGPORT'] ?? '5432';
@@ -34,7 +41,7 @@ class Database
             }
 
             try {
-                $dsn = "pgsql:host={$host};port={$port};dbname={$dbName}";
+                $dsn = "pgsql:host={$host};port={$port};dbname={$dbName};sslmode={$sslmode}";
                 self::$connection = new PDO($dsn, $username, $password, [
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
