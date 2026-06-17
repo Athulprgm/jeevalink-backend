@@ -1,9 +1,9 @@
 FROM php:8.3-apache
 
-# Enable Apache modules required for Laravel
+# Apache modules
 RUN a2enmod rewrite headers
 
-# Install system dependencies and PHP extensions
+# Dependencies
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -13,42 +13,38 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     && docker-php-ext-install pdo pdo_pgsql mbstring xml ctype fileinfo opcache \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Set Apache document root to Laravel's public directory
+# Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Laravel public folder as Apache document root
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
-        /etc/apache2/sites-available/000-default.conf \
-    && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' \
-        /etc/apache2/apache2.conf \
-        /etc/apache2/conf-available/*.conf
+    /etc/apache2/sites-available/000-default.conf \
+    /etc/apache2/apache2.conf
 
-# Allow .htaccess overrides (needed for Laravel routing)
-RUN echo '<Directory /var/www/html/public>\n\
-    Options -Indexes +FollowSymLinks\n\
-    AllowOverride All\n\
-    Require all granted\n\
-</Directory>' >> /etc/apache2/apache2.conf
-
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# Allow .htaccess overrides (required for Laravel routing)
+RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' \
+    /etc/apache2/apache2.conf
 
 WORKDIR /var/www/html
 
-# Copy composer files first (layer cache)
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interaction
 
-# Copy application code (.dockerignore excludes .env and logs)
+RUN composer install \
+    --no-dev \
+    --optimize-autoloader \
+    --no-interaction
+
 COPY . .
 
-# Run post-install scripts (package:discover etc.)
-RUN composer run-script post-autoload-dump --no-interaction || true
+RUN composer dump-autoload --optimize
 
-# Set correct permissions for Laravel
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
-    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
 # Fallback ENV defaults — Railway service variables override these at runtime
 ENV APP_NAME=Jeevalink \
@@ -65,8 +61,7 @@ ENV APP_NAME=Jeevalink \
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Railway will override this via $PORT env var
 EXPOSE 80
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["apache2-foreground"]
+
