@@ -33,11 +33,11 @@ class Database
                     }
                 }
             } else {
-                $host = $_ENV['PGHOST'] ?? '127.0.0.1';
-                $port = $_ENV['PGPORT'] ?? '5432';
-                $dbName = $_ENV['PGDATABASE'] ?? 'jeevalink';
-                $username = $_ENV['PGUSER'] ?? 'postgres';
-                $password = $_ENV['PGPASSWORD'] ?? '';
+                $host = $_ENV['PGHOST'] ?? $_ENV['DB_HOST'] ?? '127.0.0.1';
+                $port = $_ENV['PGPORT'] ?? $_ENV['DB_PORT'] ?? '5432';
+                $dbName = $_ENV['PGDATABASE'] ?? $_ENV['DB_NAME'] ?? 'jeevalink';
+                $username = $_ENV['PGUSER'] ?? $_ENV['DB_USER'] ?? 'postgres';
+                $password = $_ENV['PGPASSWORD'] ?? $_ENV['DB_PASSWORD'] ?? $_ENV['DB_PASS'] ?? '';
             }
 
             try {
@@ -62,5 +62,15 @@ class Database
         }
 
         return self::$connection;
+    }
+
+    /**
+     * Alias for getConnection() to support legacy or custom script integrations.
+     *
+     * @return PDO
+     */
+    public static function connect(): PDO
+    {
+        return self::getConnection();
     }
 }
