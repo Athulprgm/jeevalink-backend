@@ -29,7 +29,15 @@ try {
 echo "Checking database connection... ";
 try {
     $db = Database::getConnection();
-    echo "[OK] Successfully connected to database: " . ($_ENV['DB_NAME'] ?? 'jeevalink') . "\n";
+    echo "[OK] Successfully connected to database.\n";
+    
+    echo "Fetching registered users... ";
+    $stmt = $db->query("SELECT id, full_name, email FROM users");
+    $users = $stmt->fetchAll();
+    echo "[OK] Found " . count($users) . " user(s):\n";
+    foreach ($users as $row) {
+        echo "  - " . $row['id'] . " - " . $row['full_name'] . " - " . $row['email'] . "\n";
+    }
 } catch (Exception $e) {
     echo "[FAILED] Connection error: " . $e->getMessage() . "\n";
 }
