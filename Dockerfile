@@ -49,9 +49,6 @@ RUN chown -R www-data:www-data storage bootstrap/cache \
 
 # Fallback ENV defaults — Railway service variables override these at runtime
 ENV APP_NAME=Jeevalink \
-    APP_ENV=production \
-    APP_KEY=base64:47wk2MEQHOtHS8Yb8bdOv0gtQDPJc7b8W6UaxryrUfg= \
-    APP_DEBUG=false \
     APP_URL=http://localhost \
     LOG_CHANNEL=stderr \
     LOG_LEVEL=error \
@@ -65,3 +62,4 @@ RUN chmod +x /entrypoint.sh
 EXPOSE 80
 
 ENTRYPOINT ["/entrypoint.sh"]
+CMD ["apache2-foreground"]
