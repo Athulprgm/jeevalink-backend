@@ -3,7 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -11,6 +11,17 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        then: function () {
+            // Standalone health route — no middleware, no APP_KEY needed
+            // Railway healthcheck hits this to verify the container is alive
+            Route::get('/health', function () {
+                return response()->json([
+                    'status'    => 'healthy',
+                    'service'   => 'Jeevalink API',
+                    'timestamp' => now()->toISOString(),
+                ], 200);
+            })->name('health.check');
+        },
     )
     ->withMiddleware(function (Middleware $middleware) {
         // Trust all proxies — required for Railway's reverse proxy
