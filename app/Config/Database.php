@@ -17,11 +17,21 @@ class Database
     public static function getConnection(): PDO
     {
         if (self::$connection === null) {
-            $host = $_ENV['PGHOST'] ?? '127.0.0.1';
-            $port = $_ENV['PGPORT'] ?? '5432';
-            $dbName = $_ENV['PGDATABASE'] ?? 'jeevalink';
-            $username = $_ENV['PGUSER'] ?? 'postgres';
-            $password = $_ENV['PGPASSWORD'] ?? '';
+            $dbUrl = $_ENV['DATABASE_URL'] ?? getenv('DATABASE_URL') ?? null;
+            if ($dbUrl) {
+                $url = parse_url($dbUrl);
+                $host = $url['host'] ?? '127.0.0.1';
+                $port = $url['port'] ?? '5432';
+                $dbName = isset($url['path']) ? ltrim($url['path'], '/') : 'jeevalink';
+                $username = $url['user'] ?? 'postgres';
+                $password = $url['pass'] ?? '';
+            } else {
+                $host = $_ENV['PGHOST'] ?? '127.0.0.1';
+                $port = $_ENV['PGPORT'] ?? '5432';
+                $dbName = $_ENV['PGDATABASE'] ?? 'jeevalink';
+                $username = $_ENV['PGUSER'] ?? 'postgres';
+                $password = $_ENV['PGPASSWORD'] ?? '';
+            }
 
             try {
                 $dsn = "pgsql:host={$host};port={$port};dbname={$dbName}";
