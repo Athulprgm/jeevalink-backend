@@ -37,6 +37,12 @@ class User extends Authenticatable
         'total_donations',
         'status',
         'expo_push_token',
+        'pincode',
+        'full_address',
+        'dob',
+        'id_proof_front',
+        'id_proof_back',
+        'is_verified',
     ];
 
     /**
@@ -78,6 +84,8 @@ class User extends Authenticatable
             'reward_points' => 'integer',
             'lives_saved' => 'integer',
             'total_donations' => 'integer',
+            'dob' => 'date:Y-m-d',
+            'is_verified' => 'boolean',
         ];
     }
 

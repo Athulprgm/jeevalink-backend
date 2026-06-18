@@ -253,4 +253,67 @@ class AdminController extends Controller
             'data' => []
         ]);
     }
+
+    /**
+     * Verify a user's ID and account.
+     * Admin only.
+     */
+    public function verifyUser(Request $request, $id)
+    {
+        $targetUser = User::find((int)$id);
+        if (!$targetUser) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found.',
+                'errors' => []
+            ], 404);
+        }
+
+        $targetUser->is_verified = true;
+        if ($targetUser->status === 'Pending Approval') {
+            $targetUser->status = 'Active';
+        }
+        $targetUser->save();
+
+        NotificationService::sendSystemWarning($targetUser->id, "Your account and ID have been successfully verified.");
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User verified successfully.',
+            'data' => [
+                'is_verified' => true,
+                'status' => $targetUser->status
+            ]
+        ]);
+    }
+
+    /**
+     * Reject a user.
+     * Admin only.
+     */
+    public function rejectUser(Request $request, $id)
+    {
+        $targetUser = User::find((int)$id);
+        if (!$targetUser) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found.',
+                'errors' => []
+            ], 404);
+        }
+
+        $targetUser->is_verified = false;
+        $targetUser->status = 'Rejected';
+        $targetUser->save();
+
+        NotificationService::sendSystemWarning($targetUser->id, "Your account registration has been rejected. Please contact support.");
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User rejected successfully.',
+            'data' => [
+                'status' => 'Rejected'
+            ]
+        ]);
+    }
 }

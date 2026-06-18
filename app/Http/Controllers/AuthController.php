@@ -25,6 +25,11 @@ class AuthController extends Controller
             'city' => 'required|string|max:100',
             'district' => 'required|string|max:100',
             'blood_group' => 'nullable|in:A+,A-,B+,B-,AB+,AB-,O+,O-,N/A',
+            'pincode' => 'nullable|string|max:20',
+            'full_address' => 'nullable|string',
+            'dob' => 'nullable|date',
+            'id_proof_front' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'id_proof_back' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         if ($validator->fails()) {
@@ -56,6 +61,16 @@ class AuthController extends Controller
         $status = ($request->role === 'hospital') ? 'Pending Approval' : 'Active';
         $available = $request->has('available_for_donation') ? (bool)$request->available_for_donation : true;
 
+        $idProofFrontPath = null;
+        if ($request->hasFile('id_proof_front')) {
+            $idProofFrontPath = $request->file('id_proof_front')->store('id_proofs', 'public');
+        }
+
+        $idProofBackPath = null;
+        if ($request->hasFile('id_proof_back')) {
+            $idProofBackPath = $request->file('id_proof_back')->store('id_proofs', 'public');
+        }
+
         $user = User::create([
             'full_name' => $request->full_name,
             'email' => $request->email,
@@ -66,10 +81,16 @@ class AuthController extends Controller
             'city' => $request->city,
             'district' => $request->district,
             'address' => $request->address ?? null,
+            'pincode' => $request->pincode ?? null,
+            'full_address' => $request->full_address ?? null,
             'weight' => $request->weight ?? null,
             'date_of_birth' => $request->date_of_birth ?? null,
+            'dob' => $request->dob ?? null,
             'last_donated_date' => $request->last_donated_date ?? null,
             'profile_picture' => $request->profile_picture ?? null,
+            'id_proof_front' => $idProofFrontPath,
+            'id_proof_back' => $idProofBackPath,
+            'is_verified' => false,
             'available_for_donation' => $available,
             'status' => $status
         ]);
@@ -294,6 +315,122 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'Push notification token updated successfully.',
             'data' => []
+        ]);
+    }
+
+    /**
+     * Look up PIN code details.
+     */
+    public function pincodeLookup($pincode)
+    {
+        try {
+            $response = \Illuminate\Support\Facades\Http::get("https://api.postalpincode.in/pincode/{$pincode}");
+            if ($response->successful()) {
+                $data = $response->json();
+                if (isset($data[0]) && $data[0]['Status'] === 'Success') {
+                    $postOffice = $data[0]['PostOffice'][0];
+                    return response()->json([
+                        'success' => true,
+                        'district' => $postOffice['District'],
+                        'state' => $postOffice['State'],
+                        'country' => $postOffice['Country'] ?? 'India'
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            // Ignore API exceptions and return default failure
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Invalid PIN Code or Service Unavailable',
+            'district' => '',
+            'state' => '',
+            'country' => 'India'
+        ], 404);
+    }
+
+    /**
+     * Send forgot password email.
+     */
+    public function forgotPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|exists:users,email',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Email not found in our records',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $token = \Illuminate\Support\Str::random(60);
+
+        \Illuminate\Support\Facades\DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $request->email],
+            ['token' => $token, 'created_at' => now()]
+        );
+
+        try {
+            $resetUrl = env('FRONTEND_URL', 'http://localhost:5173') . '/reset-password?token=' . $token . '&email=' . urlencode($request->email);
+            \Illuminate\Support\Facades\Mail::raw("Click here to reset your password: $resetUrl", function ($message) use ($request) {
+                $message->to($request->email)
+                        ->subject('Reset Your JeevaLink Password');
+            });
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::info("Reset link for {$request->email}: $resetUrl");
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password reset link sent to your email.'
+        ]);
+    }
+
+    /**
+     * Reset password.
+     */
+    public function resetPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|exists:users,email',
+            'token' => 'required|string',
+            'password' => 'required|string|min:6',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $reset = \Illuminate\Support\Facades\DB::table('password_reset_tokens')
+            ->where('email', $request->email)
+            ->where('token', $request->token)
+            ->first();
+
+        if (!$reset) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or expired password reset token.',
+                'errors' => []
+            ], 400);
+        }
+
+        $user = User::where('email', $request->email)->first();
+        $user->password_hash = Hash::make($request->password);
+        $user->save();
+
+        \Illuminate\Support\Facades\DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password has been successfully reset.'
         ]);
     }
 }

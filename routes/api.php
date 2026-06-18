@@ -11,6 +11,9 @@ Route::prefix('v1')->group(function () {
     // ─── Authentication Routes ──────────────────────────────────────────
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
+    Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
+    Route::get('/location/pincode/{pincode}', [AuthController::class, 'pincodeLookup']);
 
     // ─── Authenticated Routes Group ──────────────────────────────────────
     Route::middleware('jwt.auth')->group(function () {
@@ -48,6 +51,8 @@ Route::prefix('v1')->group(function () {
             Route::patch('/admin/users/{id}/status', [AdminController::class, 'updateUserStatus']);
             Route::get('/admin/users', [AdminController::class, 'getUsers']);
             Route::post('/admin/users/{id}/warn', [AdminController::class, 'warnUser']);
+            Route::patch('/admin/users/{id}/verify', [AdminController::class, 'verifyUser']);
+            Route::patch('/admin/users/{id}/reject', [AdminController::class, 'rejectUser']);
         });
     });
 });
