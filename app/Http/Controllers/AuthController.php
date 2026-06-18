@@ -30,6 +30,7 @@ class AuthController extends Controller
             'dob' => 'nullable|date',
             'id_proof_front' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
             'id_proof_back' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'sex' => 'nullable|in:male,female,transgender',
         ]);
 
         if ($validator->fails()) {
@@ -92,7 +93,8 @@ class AuthController extends Controller
             'id_proof_back' => $idProofBackPath,
             'is_verified' => false,
             'available_for_donation' => $available,
-            'status' => $status
+            'status' => $status,
+            'sex' => $request->sex ?? null,
         ]);
 
         $token = JWT::generateToken($user->id, $user->role);

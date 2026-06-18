@@ -49,6 +49,7 @@ class User extends Authenticatable
         'notification_enabled',
         'eligibility_status',
         'eligibility_checked_at',
+        'sex',
     ];
 
     /**
