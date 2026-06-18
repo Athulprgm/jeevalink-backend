@@ -28,8 +28,8 @@ class AuthController extends Controller
             'pincode' => 'nullable|string|max:20',
             'full_address' => 'nullable|string',
             'dob' => 'nullable|date',
-            'id_proof_front' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'id_proof_back' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'id_proof_front' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'id_proof_back' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
         if ($validator->fails()) {
