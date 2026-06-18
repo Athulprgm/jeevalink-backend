@@ -28,6 +28,7 @@ class BloodRequest extends Model
         'additional_notes',
         'status',
         'verified',
+        'accepted_by',
         'fulfilled_by'
     ];
 
@@ -37,6 +38,7 @@ class BloodRequest extends Model
             'required_by_date' => 'datetime',
             'verified' => 'boolean',
             'units_required' => 'integer',
+            'accepted_by' => 'integer',
         ];
     }
 
@@ -50,6 +52,11 @@ class BloodRequest extends Model
         return $this->belongsTo(User::class, 'fulfilled_by');
     }
 
+    public function accepter()
+    {
+        return $this->belongsTo(User::class, 'accepted_by');
+    }
+
     /**
      * Find blood request by ID.
      *
@@ -58,11 +65,13 @@ class BloodRequest extends Model
      */
     public static function findById(int $id): ?array
     {
-        $request = self::with('requester')->find($id);
+        $request = self::with(['requester', 'accepter'])->find($id);
         if ($request) {
             $arr = $request->toArray();
             $arr['requester_name'] = $request->requester->full_name ?? null;
             $arr['requester_email'] = $request->requester->email ?? null;
+            $arr['accepter_name'] = $request->accepter->full_name ?? null;
+            $arr['accepter_email'] = $request->accepter->email ?? null;
             return $arr;
         }
         return null;
@@ -76,7 +85,7 @@ class BloodRequest extends Model
      */
     public static function getAll(array $filters): array
     {
-        $query = self::with('requester');
+        $query = self::with(['requester', 'accepter']);
 
         if (!empty($filters['bloodGroup'])) {
             $query->where('blood_group', $filters['bloodGroup']);
@@ -109,6 +118,8 @@ class BloodRequest extends Model
             $arr['requester_name'] = $req->requester->full_name ?? null;
             $arr['requester_email'] = $req->requester->email ?? null;
             $arr['requester_picture'] = $req->requester->profile_picture ?? null;
+            $arr['accepter_name'] = $req->accepter->full_name ?? null;
+            $arr['accepter_email'] = $req->accepter->email ?? null;
             return $arr;
         })->toArray();
     }

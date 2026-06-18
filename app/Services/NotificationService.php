@@ -105,4 +105,34 @@ class NotificationService
             'type' => 'Warning'
         ]);
     }
+
+    /**
+     * Notify requester that a donor accepted their request.
+     *
+     * @param array $requestData
+     * @param array $donorData
+     * @return void
+     */
+    public static function notifyAcceptance(array $requestData, array $donorData): void
+    {
+        $title = "🚨 Emergency Request Accepted";
+        $message = "Donor {$donorData['full_name']} has accepted your emergency request for patient {$requestData['patient_name']}.";
+
+        Notification::create([
+            'recipient_id' => $requestData['requested_by'],
+            'title' => $title,
+            'message' => $message,
+            'type' => 'SOS'
+        ]);
+
+        $requester = \App\Models\User::find($requestData['requested_by']);
+        if ($requester && !empty($requester->expo_push_token)) {
+            FCMService::sendPushNotification(
+                $requester->expo_push_token,
+                $title,
+                "Donor {$donorData['full_name']} has accepted your emergency request.",
+                ['requestId' => $requestData['id'], 'type' => 'SOS']
+            );
+        }
+    }
 }

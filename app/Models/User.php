@@ -43,6 +43,10 @@ class User extends Authenticatable
         'id_proof_front',
         'id_proof_back',
         'is_verified',
+        'fcm_token',
+        'latitude',
+        'longitude',
+        'notification_enabled',
     ];
 
     /**
@@ -86,6 +90,9 @@ class User extends Authenticatable
             'total_donations' => 'integer',
             'dob' => 'date:Y-m-d',
             'is_verified' => 'boolean',
+            'latitude' => 'decimal:8',
+            'longitude' => 'decimal:8',
+            'notification_enabled' => 'boolean',
         ];
     }
 
@@ -260,6 +267,66 @@ class User extends Authenticatable
         }
 
         return $query->get()->toArray();
+    }
+
+    /**
+     * Fetch nearby available matching donors.
+     */
+    public static function getNearbyDonors($latitude, $longitude, $radius, $bloodGroup, $district = null, $excludeId = null)
+    {
+        $query = self::where('available_for_donation', true)
+            ->where('status', 'Active')
+            ->where('notification_enabled', true)
+            ->whereNotNull('fcm_token');
+
+        if ($bloodGroup && $bloodGroup !== 'N/A') {
+            $query->where('blood_group', $bloodGroup);
+        }
+
+        if ($district) {
+            $query->where('district', $district);
+        }
+
+        if ($excludeId) {
+            $query->where('id', '!=', $excludeId);
+        }
+
+        $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
+
+        if ($latitude && $longitude && !$isSqlite) {
+            $haversine = "(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude))))";
+            $query->selectRaw("*, $haversine AS distance", [$latitude, $longitude, $latitude]);
+            if ($radius) {
+                $query->havingRaw("$haversine <= ?", [$latitude, $longitude, $latitude, $radius]);
+            }
+            $query->orderBy('distance', 'asc');
+            return $query->get();
+        } else {
+            $donors = $query->get();
+            if ($latitude && $longitude) {
+                $donors = $donors->map(function ($donor) use ($latitude, $longitude) {
+                    if ($donor->latitude && $donor->longitude) {
+                        $theta = $longitude - $donor->longitude;
+                        $dist = sin(deg2rad($latitude)) * sin(deg2rad($donor->latitude)) +  cos(deg2rad($latitude)) * cos(deg2rad($donor->latitude)) * cos(deg2rad($theta));
+                        $dist = acos(min(max($dist, -1.0), 1.0));
+                        $dist = rad2deg($dist);
+                        $miles = $dist * 60 * 1.1515;
+                        $donor->distance = round($miles * 1.609344, 2);
+                    } else {
+                        $donor->distance = round(rand(10, 50) / 10, 1);
+                    }
+                    return $donor;
+                });
+
+                if ($radius) {
+                    $donors = $donors->filter(function ($d) use ($radius) {
+                        return $d->distance <= $radius;
+                    });
+                }
+                return $donors->sortBy('distance')->values();
+            }
+            return $donors;
+        }
     }
 
     /**

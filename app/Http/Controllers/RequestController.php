@@ -256,4 +256,63 @@ class RequestController extends Controller
             'data' => []
         ]);
     }
+
+    /**
+     * Accept a pending blood request.
+     */
+    public function accept(Request $request, $id)
+    {
+        $requestId = (int)$id;
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+                'errors' => []
+            ], 401);
+        }
+
+        $bloodRequest = BloodRequest::find($requestId);
+
+        if (!$bloodRequest) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Blood request not found.',
+                'errors' => []
+            ], 404);
+        }
+
+        if ($bloodRequest->status === 'Fulfilled') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This blood request has already been fulfilled.',
+                'errors' => []
+            ], 400);
+        }
+
+        if ($bloodRequest->accepted_by !== null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This blood request has already been accepted by another donor.',
+                'errors' => []
+            ], 400);
+        }
+
+        $bloodRequest->accepted_by = $user->id;
+        $bloodRequest->save();
+
+        $freshRequest = BloodRequest::findById($requestId);
+        $donor = User::findById($user->id);
+
+        // Notify the creator of the request
+        NotificationService::notifyAcceptance($freshRequest, $donor);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Blood request accepted successfully.',
+            'data' => [
+                'request' => $freshRequest
+            ]
+        ]);
+    }
 }

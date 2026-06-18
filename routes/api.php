@@ -5,6 +5,7 @@ use App\Http\Controllers\RequestController;
 use App\Http\Controllers\DonorController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\EmergencyController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -21,15 +22,27 @@ Route::prefix('v1')->group(function () {
         Route::patch('/auth/profile', [AuthController::class, 'profile']);
         Route::patch('/auth/toggle-availability', [AuthController::class, 'toggleAvailability']);
         Route::post('/auth/push-token', [AuthController::class, 'pushToken']);
+        
+        // ─── Emergency Blood Alert Routes ───────────────────────────────────
+        Route::post('/save-fcm-token', [EmergencyController::class, 'saveFcmToken']);
+        Route::post('/emergency/request', [EmergencyController::class, 'createRequest']);
+        Route::get('/emergency/history', [EmergencyController::class, 'getHistory']);
+        Route::get('/emergency/details/{id}', [EmergencyController::class, 'getDetails']);
+        Route::post('/emergency/accept', [EmergencyController::class, 'acceptRequest']);
+        Route::post('/emergency/reject', [EmergencyController::class, 'rejectRequest']);
+        Route::get('/emergency/nearby-donors', [EmergencyController::class, 'getNearbyDonors']);
+        Route::get('/emergency/live-donor-count', [EmergencyController::class, 'getLiveDonorCount']);
 
         // ─── Blood Request Routes ───────────────────────────────────────────
         Route::post('/requests', [RequestController::class, 'create']);
         Route::get('/requests', [RequestController::class, 'index']);
+        Route::patch('/requests/{id}/accept', [RequestController::class, 'accept']);
         Route::patch('/requests/{id}/fulfill', [RequestController::class, 'fulfill']);
         Route::delete('/requests/{id}', [RequestController::class, 'destroy']);
 
         // ─── Donor Routes ───────────────────────────────────────────────────
         Route::get('/donors/search', [DonorController::class, 'search']);
+        Route::get('/donors/live-count', [DonorController::class, 'liveCount']);
 
         // ─── Notification Routes ────────────────────────────────────────────
         Route::get('/notifications', [NotificationController::class, 'index']);

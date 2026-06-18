@@ -39,4 +39,31 @@ class DonorController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Get counts of live active available donors grouped by blood group.
+     */
+    public function liveCount(Request $request)
+    {
+        $counts = User::where('available_for_donation', true)
+            ->where('status', 'Active')
+            ->selectRaw('blood_group, count(*) as count')
+            ->groupBy('blood_group')
+            ->pluck('count', 'blood_group')
+            ->toArray();
+
+        $bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+        $responseCounts = [];
+        foreach ($bloodGroups as $bg) {
+            $responseCounts[$bg] = $counts[$bg] ?? 0;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Live donor counts retrieved successfully.',
+            'data' => [
+                'counts' => $responseCounts
+            ]
+        ]);
+    }
 }
