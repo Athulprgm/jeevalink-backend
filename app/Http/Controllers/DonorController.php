@@ -66,4 +66,52 @@ class DonorController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Save the donation eligibility status of the authenticated donor.
+     */
+    public function saveEligibility(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+                'errors' => []
+            ], 401);
+        }
+
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'eligibility_status' => 'required|in:Eligible,Ineligible',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $dbUser = User::find($user->id);
+        $dbUser->eligibility_status = $request->eligibility_status;
+        $dbUser->eligibility_checked_at = now();
+
+        if ($request->eligibility_status === 'Ineligible') {
+            $dbUser->available_for_donation = false;
+        } else {
+            $dbUser->available_for_donation = true;
+        }
+        $dbUser->save();
+
+        $profile = User::findById($user->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Donation eligibility status saved successfully.',
+            'data' => [
+                'user' => $profile
+            ]
+        ]);
+    }
 }

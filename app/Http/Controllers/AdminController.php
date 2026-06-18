@@ -316,4 +316,57 @@ class AdminController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Update a user's donation eligibility status manually.
+     * Admin only.
+     */
+    public function updateUserEligibility(Request $request, $id)
+    {
+        $targetUserId = (int)$id;
+
+        $validator = Validator::make($request->all(), [
+            'eligibility_status' => 'required|in:Eligible,Ineligible,Pending Check',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $targetUser = User::find($targetUserId);
+        if (!$targetUser) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found.',
+                'errors' => []
+            ], 404);
+        }
+
+        $targetUser->eligibility_status = $request->eligibility_status;
+        $targetUser->eligibility_checked_at = now();
+
+        if ($request->eligibility_status === 'Ineligible') {
+            $targetUser->available_for_donation = false;
+        } else if ($request->eligibility_status === 'Eligible') {
+            $targetUser->available_for_donation = true;
+        }
+        $targetUser->save();
+
+        // Send system notification about eligibility update
+        $eligibilityMsg = "Your donation eligibility status has been updated to: {$request->eligibility_status} by the administrator.";
+        NotificationService::sendSystemWarning($targetUserId, $eligibilityMsg);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User eligibility status updated successfully.',
+            'data' => [
+                'eligibility_status' => $targetUser->eligibility_status,
+                'eligibility_checked_at' => $targetUser->eligibility_checked_at
+            ]
+        ]);
+    }
 }

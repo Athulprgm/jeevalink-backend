@@ -47,6 +47,8 @@ class User extends Authenticatable
         'latitude',
         'longitude',
         'notification_enabled',
+        'eligibility_status',
+        'eligibility_checked_at',
     ];
 
     /**
@@ -93,6 +95,7 @@ class User extends Authenticatable
             'latitude' => 'decimal:8',
             'longitude' => 'decimal:8',
             'notification_enabled' => 'boolean',
+            'eligibility_checked_at' => 'datetime',
         ];
     }
 

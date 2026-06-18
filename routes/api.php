@@ -43,6 +43,7 @@ Route::prefix('v1')->group(function () {
         // ─── Donor Routes ───────────────────────────────────────────────────
         Route::get('/donors/search', [DonorController::class, 'search']);
         Route::get('/donors/live-count', [DonorController::class, 'liveCount']);
+        Route::post('/donors/eligibility', [DonorController::class, 'saveEligibility']);
 
         // ─── Notification Routes ────────────────────────────────────────────
         Route::get('/notifications', [NotificationController::class, 'index']);
@@ -66,6 +67,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/admin/users/{id}/warn', [AdminController::class, 'warnUser']);
             Route::patch('/admin/users/{id}/verify', [AdminController::class, 'verifyUser']);
             Route::patch('/admin/users/{id}/reject', [AdminController::class, 'rejectUser']);
+            Route::patch('/admin/users/{id}/eligibility', [AdminController::class, 'updateUserEligibility']);
         });
     });
 });
