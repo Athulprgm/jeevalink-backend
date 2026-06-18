@@ -347,7 +347,7 @@ class AuthController extends Controller
             'district' => '',
             'state' => '',
             'country' => 'India'
-        ], 404);
+        ], 200);
     }
 
     /**
