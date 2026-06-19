@@ -15,6 +15,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
     Route::get('/location/pincode/{pincode}', [AuthController::class, 'pincodeLookup']);
+    Route::post('/test-notification', [NotificationController::class, 'testNotification']);
 
     // ─── Authenticated Routes Group ──────────────────────────────────────
     Route::middleware('jwt.auth')->group(function () {
@@ -49,7 +50,6 @@ Route::prefix('v1')->group(function () {
         Route::get('/notifications', [NotificationController::class, 'index']);
         Route::patch('/notifications/{id}/read', [NotificationController::class, 'read']);
         Route::patch('/notifications/read-all', [NotificationController::class, 'readAll']);
-        Route::post('/test-notification', [NotificationController::class, 'testNotification']);
 
         // ─── Complaint Submission Route ─────────────────────────────────────
         Route::post('/admin/complaints', [AdminController::class, 'fileComplaint']);

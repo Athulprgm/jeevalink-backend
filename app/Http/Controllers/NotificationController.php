@@ -101,16 +101,13 @@ class NotificationController extends Controller
      */
     public function testNotification(Request $request)
     {
+        $fcmToken = $request->input('fcm_token');
         $user = Auth::user();
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized',
-                'errors' => []
-            ], 401);
+        
+        if (empty($fcmToken)) {
+            $fcmToken = $user ? $user->fcm_token : null;
         }
 
-        $fcmToken = $request->input('fcm_token') ?? $user->fcm_token;
         if (empty($fcmToken)) {
             return response()->json([
                 'success' => false,
@@ -120,16 +117,24 @@ class NotificationController extends Controller
         }
 
         $firebaseService = app(\App\Services\FirebaseService::class);
-        $title = "Test Notification";
-        $body = "This is a test notification from JeevaLink Backend.";
         
-        $success = $firebaseService->sendNotification($fcmToken, $title, $body, ['type' => 'test'], $user->id);
+        // Allow custom title, body, and data payload for testing sounds/routing
+        $title = $request->input('title') ?? "Test Notification";
+        $body = $request->input('body') ?? "This is a test notification from JeevaLink Backend.";
+        $data = $request->input('data') ?? ['type' => 'test'];
+        
+        $userId = $user ? $user->id : null;
+        $success = $firebaseService->sendNotification($fcmToken, $title, $body, $data, $userId);
 
         if ($success) {
             return response()->json([
                 'success' => true,
                 'message' => 'Test notification sent successfully.',
-                'data' => []
+                'data' => [
+                    'title' => $title,
+                    'body' => $body,
+                    'data' => $data
+                ]
             ]);
         }
 
