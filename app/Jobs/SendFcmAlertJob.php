@@ -17,6 +17,30 @@ class SendFcmAlertJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /**
+     * The number of times the job may be attempted.
+     *
+     * @var int
+     */
+    public $tries = 3;
+
+    /**
+     * Calculate the number of seconds to wait before retrying the job.
+     *
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [60, 300]; // 1 minute, 5 minutes
+    }
+
+    /**
+     * The number of seconds the job can run before timing out.
+     *
+     * @var int
+     */
+    public $timeout = 60;
+
     protected $requestId;
     protected $donorIds;
 
@@ -64,8 +88,6 @@ class SendFcmAlertJob implements ShouldQueue
             'priority' => $request->priority,
         ];
 
-        $tokens = [];
-        
         foreach ($donors as $donor) {
             // 1. Create a local database notification record for the user
             try {
@@ -81,17 +103,18 @@ class SendFcmAlertJob implements ShouldQueue
                 Log::error("Failed to insert database notification for user " . $donor->id . ": " . $e->getMessage());
             }
 
-            // 2. Gather FCM token if present
+            // 2. Gather FCM token if present and send notification
             if ($donor->fcm_token) {
-                $tokens[] = $donor->fcm_token;
+                $firebaseService->sendNotification($donor->fcm_token, $title, $body, $data, $donor->id);
             }
         }
+    }
 
-        if (!empty($tokens)) {
-            Log::info("Sending multicast emergency FCM push to " . count($tokens) . " tokens.");
-            $firebaseService->sendMulticast($tokens, $title, $body, $data);
-        } else {
-            Log::info("SendFcmAlertJob: No device tokens found for matching donors.");
-        }
+    /**
+     * Handle a job failure.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::error("SendFcmAlertJob completely failed for request ID {$this->requestId} after {$this->tries} attempts. Error: " . $exception->getMessage());
     }
 }

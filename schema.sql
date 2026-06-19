@@ -35,17 +35,28 @@ CREATE TABLE users (
   blood_group VARCHAR(5) NOT NULL DEFAULT 'N/A',
   city VARCHAR(100) NOT NULL,
   district VARCHAR(100) NOT NULL,
-  address TEXT DEFAULT NULL,
+  full_address TEXT DEFAULT NULL,
   weight INT DEFAULT NULL,
   date_of_birth DATE DEFAULT NULL,
+  dob DATE DEFAULT NULL,
   last_donated_date DATE DEFAULT NULL,
   profile_picture TEXT DEFAULT NULL,
+  id_proof_front TEXT DEFAULT NULL,
+  id_proof_back TEXT DEFAULT NULL,
+  sex VARCHAR(20) DEFAULT NULL,
   available_for_donation BOOLEAN NOT NULL DEFAULT TRUE,
   reward_points INT NOT NULL DEFAULT 100,
   lives_saved INT NOT NULL DEFAULT 0,
   total_donations INT NOT NULL DEFAULT 0,
   status user_status NOT NULL DEFAULT 'Active',
+  eligibility_status VARCHAR(50) DEFAULT 'Pending Check',
+  eligibility_checked_at TIMESTAMP DEFAULT NULL,
+  is_verified BOOLEAN NOT NULL DEFAULT FALSE,
   expo_push_token TEXT DEFAULT NULL,
+  fcm_token TEXT DEFAULT NULL,
+  latitude DECIMAL(10,8) DEFAULT NULL,
+  longitude DECIMAL(11,8) DEFAULT NULL,
+  notification_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -54,6 +65,27 @@ CREATE INDEX idx_users_blood_group ON users (blood_group);
 CREATE INDEX idx_users_district ON users (district);
 CREATE INDEX idx_users_city ON users (city);
 CREATE INDEX idx_users_status ON users (status);
+
+-- --------------------------------------------------------
+-- Table structure for table notification_logs
+-- --------------------------------------------------------
+CREATE TABLE notification_logs (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+  fcm_token TEXT,
+  title VARCHAR(255),
+  body TEXT,
+  data JSONB,
+  status VARCHAR(30) DEFAULT 'pending',
+  fcm_message_id TEXT,
+  error_message TEXT,
+  attempt INT DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_notification_logs_user ON notification_logs (user_id);
+CREATE INDEX idx_notification_logs_status ON notification_logs (status);
 
 -- --------------------------------------------------------
 -- Table structure for table blood_requests

@@ -95,4 +95,48 @@ class NotificationController extends Controller
             'data' => []
         ]);
     }
+
+    /**
+     * Test notification delivery.
+     */
+    public function testNotification(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+                'errors' => []
+            ], 401);
+        }
+
+        $fcmToken = $request->input('fcm_token') ?? $user->fcm_token;
+        if (empty($fcmToken)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No FCM token provided or found for user.',
+                'errors' => []
+            ], 400);
+        }
+
+        $firebaseService = app(\App\Services\FirebaseService::class);
+        $title = "Test Notification";
+        $body = "This is a test notification from JeevaLink Backend.";
+        
+        $success = $firebaseService->sendNotification($fcmToken, $title, $body, ['type' => 'test'], $user->id);
+
+        if ($success) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Test notification sent successfully.',
+                'data' => []
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to send test notification. Check logs.',
+            'errors' => []
+        ], 500);
+    }
 }

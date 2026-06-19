@@ -199,7 +199,7 @@ class User extends Authenticatable
         if (!$user) {
             return false;
         }
-        $user->expo_push_token = $token;
+        $user->fcm_token = $token;
         return $user->save();
     }
 

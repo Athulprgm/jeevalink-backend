@@ -35,9 +35,9 @@ class NotificationService
             ]);
 
             // 2. Dispatch push notification via FCM / Expo if urgency is critical or SOS
-            if (($urgency === 'Emergency SOS' || $urgency === 'Urgent') && !empty($donor['expo_push_token'])) {
+            if (($urgency === 'Emergency SOS' || $urgency === 'Urgent') && !empty($donor['fcm_token'])) {
                 FCMService::sendPushNotification(
-                    $donor['expo_push_token'],
+                    $donor['fcm_token'],
                     $title,
                     "Immediate donor needed for {$bloodGroup} at {$hospital}.",
                     ['requestId' => $requestData['id'], 'type' => 'SOS']
@@ -126,9 +126,9 @@ class NotificationService
         ]);
 
         $requester = \App\Models\User::find($requestData['requested_by']);
-        if ($requester && !empty($requester->expo_push_token)) {
+        if ($requester && !empty($requester->fcm_token)) {
             FCMService::sendPushNotification(
-                $requester->expo_push_token,
+                $requester->fcm_token,
                 $title,
                 "Donor {$donorData['full_name']} has accepted your emergency request.",
                 ['requestId' => $requestData['id'], 'type' => 'SOS']

@@ -49,6 +49,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/notifications', [NotificationController::class, 'index']);
         Route::patch('/notifications/{id}/read', [NotificationController::class, 'read']);
         Route::patch('/notifications/read-all', [NotificationController::class, 'readAll']);
+        Route::post('/test-notification', [NotificationController::class, 'testNotification']);
 
         // ─── Complaint Submission Route ─────────────────────────────────────
         Route::post('/admin/complaints', [AdminController::class, 'fileComplaint']);
