@@ -9,6 +9,49 @@ use App\Models\User;
 class FirebaseService
 {
     /**
+     * Resolve and parse the Firebase service account credentials.
+     * Supports both a raw JSON string in env('FIREBASE_CREDENTIALS')
+     * and a traditional local file path.
+     *
+     * @return array|null
+     */
+    private function getCredentials(): ?array
+    {
+        $credentialsSource = env('FIREBASE_CREDENTIALS');
+        if (!$credentialsSource) {
+            Log::warning("Firebase Credentials setting is not set in environment.");
+            return null;
+        }
+
+        $credentials = null;
+        if (str_starts_with(trim($credentialsSource), '{')) {
+            $credentials = json_decode($credentialsSource, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error("Failed to parse raw JSON from FIREBASE_CREDENTIALS environment variable: " . json_last_error_msg());
+                return null;
+            }
+        } else {
+            if (!file_exists($credentialsSource)) {
+                Log::warning("Firebase credentials file does not exist at path: {$credentialsSource}");
+                return null;
+            }
+            $content = file_get_contents($credentialsSource);
+            $credentials = json_decode($content, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error("Failed to parse Firebase credentials JSON from file: " . json_last_error_msg());
+                return null;
+            }
+        }
+
+        if (!$credentials || !isset($credentials['client_email']) || !isset($credentials['private_key'])) {
+            Log::error("Invalid Firebase credentials format: client_email or private_key is missing.");
+            return null;
+        }
+
+        return $credentials;
+    }
+
+    /**
      * Get OAuth2 Bearer token for FCM v1 API using the Service Account JSON.
      * Generates a short-lived JWT and exchanges it for an access token.
      *
@@ -16,15 +59,8 @@ class FirebaseService
      */
     private function getAccessToken(): ?string
     {
-        $credentialsPath = env('FIREBASE_CREDENTIALS');
-        if (!$credentialsPath || !file_exists($credentialsPath)) {
-            Log::error("Firebase Credentials missing. Expected path: {$credentialsPath}");
-            return null;
-        }
-
-        $credentials = json_decode(file_get_contents($credentialsPath), true);
-        if (!$credentials || !isset($credentials['client_email']) || !isset($credentials['private_key'])) {
-            Log::error("Invalid Firebase credentials file format.");
+        $credentials = $this->getCredentials();
+        if (!$credentials) {
             return null;
         }
 
@@ -85,10 +121,19 @@ class FirebaseService
      */
     public function sendNotification(string $token, string $title, string $body, array $data = [], ?int $userId = null): bool
     {
+        $credentials = $this->getCredentials();
         $projectId = env('FIREBASE_PROJECT_ID');
-        if (!$projectId) {
-            $this->logResult($userId, $token, $title, $body, $data, 'simulated', null, 'Missing FIREBASE_PROJECT_ID');
-            return true; // Simulate success
+
+        // Fallback to credentials project_id if env value is missing or placeholder
+        if ((!$projectId || $projectId === 'your-firebase-project-id') && $credentials) {
+            $projectId = $credentials['project_id'] ?? null;
+        }
+
+        // If credentials or project ID cannot be determined, fall back to mock simulated mode
+        if (!$credentials || !$projectId || $projectId === 'your-firebase-project-id') {
+            Log::info("FCM running in simulated mode. Credentials or project ID missing.");
+            $this->logResult($userId, $token, $title, $body, $data, 'simulated', null, 'Credentials or project ID missing');
+            return true;
         }
 
         $accessToken = $this->getAccessToken();
@@ -96,6 +141,14 @@ class FirebaseService
             $this->logResult($userId, $token, $title, $body, $data, 'failed', null, 'Auth token failed');
             return false;
         }
+
+        // Dynamic sound/channel routing based on SOS message type
+        $type = isset($data['type']) ? strtolower($data['type']) : '';
+        $isSOS = ($type === 'sos' || $type === 'emergency_sos' || (isset($data['urgency']) && strtolower($data['urgency']) === 'emergency sos'));
+
+        $androidChannel = $isSOS ? 'emergency-siren-channel' : 'jeevalink_urgent';
+        $soundName = $isSOS ? 'siren' : 'default';
+        $apnsSound = $isSOS ? 'siren.mp3' : 'default';
 
         $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
 
@@ -109,14 +162,14 @@ class FirebaseService
                 'android' => [
                     'priority' => 'HIGH',
                     'notification' => [
-                        'channel_id' => 'jeevalink_urgent',
-                        'sound' => 'default',
+                        'channel_id' => $androidChannel,
+                        'sound' => $soundName,
                     ]
                 ],
                 'apns' => [
                     'payload' => [
                         'aps' => [
-                            'sound' => 'default',
+                            'sound' => $apnsSound,
                         ]
                     ]
                 ],
