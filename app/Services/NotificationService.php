@@ -40,7 +40,17 @@ class NotificationService
                     $donor['fcm_token'],
                     $title,
                     "Immediate donor needed for {$bloodGroup} at {$hospital}.",
-                    ['requestId' => $requestData['id'], 'type' => 'SOS']
+                    [
+                        'requestId' => $requestData['id'],
+                        'type' => 'SOS',
+                        'patientName' => $requestData['patient_name'] ?? '',
+                        'bloodGroup' => $requestData['blood_group'] ?? '',
+                        'unitsRequired' => $requestData['units_required'] ?? '1',
+                        'hospitalName' => $requestData['hospital_name'] ?? '',
+                        'contactNumber' => $requestData['contact_number'] ?? '',
+                        'location' => $requestData['location'] ?? '',
+                        'additionalNotes' => $requestData['additional_notes'] ?? ''
+                    ]
                 );
             }
         }
@@ -131,7 +141,7 @@ class NotificationService
                 $requester->fcm_token,
                 $title,
                 "Donor {$donorData['full_name']} has accepted your emergency request.",
-                ['requestId' => $requestData['id'], 'type' => 'SOS']
+                ['requestId' => $requestData['id'], 'type' => 'Acceptance']
             );
         }
     }

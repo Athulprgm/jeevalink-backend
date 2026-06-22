@@ -142,9 +142,15 @@ class FirebaseService
             return false;
         }
 
+        // Ensure all data values are strings for FCM v1 schema validation
+        $stringData = [];
+        foreach ($data as $key => $value) {
+            $stringData[(string)$key] = (string)$value;
+        }
+
         // Dynamic sound/channel routing based on SOS message type
-        $type = isset($data['type']) ? strtolower($data['type']) : '';
-        $isSOS = ($type === 'sos' || $type === 'emergency_sos' || (isset($data['urgency']) && strtolower($data['urgency']) === 'emergency sos'));
+        $type = isset($stringData['type']) ? strtolower($stringData['type']) : '';
+        $isSOS = ($type === 'sos' || $type === 'emergency_sos' || (isset($stringData['urgency']) && strtolower($stringData['urgency']) === 'emergency sos'));
 
         $androidChannel = $isSOS ? 'emergency-siren-channel' : 'jeevalink_urgent';
         $soundName = $isSOS ? 'siren' : 'default';
@@ -173,7 +179,7 @@ class FirebaseService
                         ]
                     ]
                 ],
-                'data' => (object)$data // ensure it's an object even if empty
+                'data' => (object)$stringData // ensure it's an object even if empty
             ]
         ];
 
