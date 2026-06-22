@@ -11,8 +11,8 @@ class Notification extends Model
 
     protected $table = 'notifications';
 
-    // Disable standard Laravel timestamps because the table has only created_at
-    const UPDATED_AT = null;
+    // Disable standard Laravel timestamps because the table does not have updated_at
+    public $timestamps = false;
 
     protected $fillable = [
         'recipient_id',
