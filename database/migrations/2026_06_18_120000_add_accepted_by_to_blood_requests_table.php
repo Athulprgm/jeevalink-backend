@@ -11,10 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('blood_requests', function (Blueprint $table) {
-            $table->unsignedBigInteger('accepted_by')->nullable();
-            $table->foreign('accepted_by')->references('id')->on('users')->onDelete('set null');
-        });
+        if (!Schema::hasColumn('blood_requests', 'accepted_by')) {
+            Schema::table('blood_requests', function (Blueprint $table) {
+                $table->unsignedBigInteger('accepted_by')->nullable();
+                $table->foreign('accepted_by')->references('id')->on('users')->onDelete('set null');
+            });
+        }
     }
 
     /**
