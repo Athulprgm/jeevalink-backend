@@ -215,7 +215,7 @@ class AuthController extends Controller
             'email' => 'nullable|email|max:255|unique:users,email,' . $user->id,
             'mobile' => 'nullable|string|max:20|unique:users,mobile,' . $user->id,
             'blood_group' => 'nullable|in:A+,A-,B+,B-,AB+,AB-,O+,O-,N/A',
-            'date_of_birth' => 'nullable|date_format:Y-m-d',
+            'dob' => 'nullable|date_format:Y-m-d',
             'last_donated_date' => 'nullable|date_format:Y-m-d',
             'weight' => 'nullable|numeric',
             'sex' => 'nullable|in:male,female,transgender',
