@@ -211,10 +211,18 @@ class AuthController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
+            'full_name' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255|unique:users,email,' . $user->id,
+            'mobile' => 'nullable|string|max:20|unique:users,mobile,' . $user->id,
             'blood_group' => 'nullable|in:A+,A-,B+,B-,AB+,AB-,O+,O-,N/A',
             'date_of_birth' => 'nullable|date_format:Y-m-d',
             'last_donated_date' => 'nullable|date_format:Y-m-d',
             'weight' => 'nullable|numeric',
+            'sex' => 'nullable|in:male,female,transgender',
+            'pincode' => 'nullable|string|max:20',
+            'address' => 'nullable|string',
+            'city' => 'nullable|string|max:100',
+            'district' => 'nullable|string|max:100',
         ]);
 
         if ($validator->fails()) {

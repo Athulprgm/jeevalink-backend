@@ -153,7 +153,7 @@ class User extends Authenticatable
         $allowedFields = [
             'full_name', 'blood_group', 'city', 'district', 
             'address', 'weight', 'date_of_birth', 'last_donated_date', 
-            'profile_picture'
+            'profile_picture', 'email', 'mobile', 'sex', 'pincode'
         ];
 
         $updates = [];
