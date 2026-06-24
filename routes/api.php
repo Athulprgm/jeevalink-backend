@@ -13,22 +13,28 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
-// ─── One-time Admin Seed Route (protected by secret key) ───────────────────
-// Call: POST /api/setup-admin  with body { "secret": "<YOUR_APP_KEY>" }
-// Remove this route after first use in production.
+// ─── One-time Admin Seed Route (remove after use) ──────────────────────────
 Route::post('/setup-admin', function (\Illuminate\Http\Request $request) {
-    $secret = $request->input('secret', '');
-    $appKey = config('app.key');
+    // Hard-coded one-time token — change after use
+    $validToken = 'JEEVALINK_SETUP_2026_XK9P';
 
-    // Strip the "base64:" prefix if present for comparison
-    $expectedSecret = str_replace('base64:', '', $appKey);
-
-    if (!hash_equals($expectedSecret, $secret)) {
+    if ($request->input('token') !== $validToken) {
         return response()->json(['success' => false, 'message' => 'Forbidden'], 403);
     }
 
     if (DB::table('users')->where('email', 'admin@jeevalink.org')->exists()) {
-        return response()->json(['success' => true, 'message' => 'Admin user already exists.']);
+        // Update existing record to ensure correct role/status/password
+        DB::table('users')->where('email', 'admin@jeevalink.org')->update([
+            'role'          => 'admin',
+            'status'        => 'Active',
+            'password_hash' => Hash::make('Admin@2026'),
+            'updated_at'    => now(),
+        ]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Admin user updated to ensure correct credentials.',
+            'data'    => ['email' => 'admin@jeevalink.org', 'password' => 'Admin@2026']
+        ]);
     }
 
     DB::table('users')->insert([
@@ -53,11 +59,7 @@ Route::post('/setup-admin', function (\Illuminate\Http\Request $request) {
     return response()->json([
         'success' => true,
         'message' => '✅ Admin user created successfully!',
-        'data'    => [
-            'email'    => 'admin@jeevalink.org',
-            'password' => 'Admin@2026',
-            'role'     => 'admin',
-        ]
+        'data'    => ['email' => 'admin@jeevalink.org', 'password' => 'Admin@2026']
     ]);
 });
 
