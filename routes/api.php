@@ -13,56 +13,6 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
-// ─── One-time Admin Seed Route (remove after use) ──────────────────────────
-Route::post('/setup-admin', function (\Illuminate\Http\Request $request) {
-    // Hard-coded one-time token — change after use
-    $validToken = 'JEEVALINK_SETUP_2026_XK9P';
-
-    if ($request->input('token') !== $validToken) {
-        return response()->json(['success' => false, 'message' => 'Forbidden'], 403);
-    }
-
-    if (DB::table('users')->where('email', 'admin@jeevalink.org')->exists()) {
-        // Update existing record to ensure correct role/status/password
-        DB::table('users')->where('email', 'admin@jeevalink.org')->update([
-            'role'          => 'admin',
-            'status'        => 'Active',
-            'password_hash' => Hash::make('Admin@2026'),
-            'updated_at'    => now(),
-        ]);
-        return response()->json([
-            'success' => true,
-            'message' => 'Admin user updated to ensure correct credentials.',
-            'data'    => ['email' => 'admin@jeevalink.org', 'password' => 'Admin@2026']
-        ]);
-    }
-
-    DB::table('users')->insert([
-        'full_name'              => 'JeevaLink Admin',
-        'email'                  => 'admin@jeevalink.org',
-        'mobile'                 => '9000000001',
-        'password_hash'          => Hash::make('Admin@2026'),
-        'role'                   => 'admin',
-        'blood_group'            => 'N/A',
-        'city'                   => 'Kochi',
-        'district'               => 'Ernakulam',
-        'status'                 => 'Active',
-        'is_verified'            => true,
-        'available_for_donation' => false,
-        'reward_points'          => 0,
-        'lives_saved'            => 0,
-        'total_donations'        => 0,
-        'created_at'             => now(),
-        'updated_at'             => now(),
-    ]);
-
-    return response()->json([
-        'success' => true,
-        'message' => '✅ Admin user created successfully!',
-        'data'    => ['email' => 'admin@jeevalink.org', 'password' => 'Admin@2026']
-    ]);
-});
-
 Route::prefix('v1')->group(function () {
     // ─── Authentication Routes ──────────────────────────────────────────
     Route::post('/auth/register', [AuthController::class, 'register']);
