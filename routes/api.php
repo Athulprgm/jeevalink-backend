@@ -10,6 +10,56 @@ use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\SupportTicketController;
 use App\Http\Controllers\ActivityLogController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+
+// ─── One-time Admin Seed Route (protected by secret key) ───────────────────
+// Call: POST /api/setup-admin  with body { "secret": "<YOUR_APP_KEY>" }
+// Remove this route after first use in production.
+Route::post('/setup-admin', function (\Illuminate\Http\Request $request) {
+    $secret = $request->input('secret', '');
+    $appKey = config('app.key');
+
+    // Strip the "base64:" prefix if present for comparison
+    $expectedSecret = str_replace('base64:', '', $appKey);
+
+    if (!hash_equals($expectedSecret, $secret)) {
+        return response()->json(['success' => false, 'message' => 'Forbidden'], 403);
+    }
+
+    if (DB::table('users')->where('email', 'admin@jeevalink.org')->exists()) {
+        return response()->json(['success' => true, 'message' => 'Admin user already exists.']);
+    }
+
+    DB::table('users')->insert([
+        'full_name'              => 'JeevaLink Admin',
+        'email'                  => 'admin@jeevalink.org',
+        'mobile'                 => '9000000001',
+        'password_hash'          => Hash::make('Admin@2026'),
+        'role'                   => 'admin',
+        'blood_group'            => 'N/A',
+        'city'                   => 'Kochi',
+        'district'               => 'Ernakulam',
+        'status'                 => 'Active',
+        'is_verified'            => true,
+        'available_for_donation' => false,
+        'reward_points'          => 0,
+        'lives_saved'            => 0,
+        'total_donations'        => 0,
+        'created_at'             => now(),
+        'updated_at'             => now(),
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'message' => '✅ Admin user created successfully!',
+        'data'    => [
+            'email'    => 'admin@jeevalink.org',
+            'password' => 'Admin@2026',
+            'role'     => 'admin',
+        ]
+    ]);
+});
 
 Route::prefix('v1')->group(function () {
     // ─── Authentication Routes ──────────────────────────────────────────
