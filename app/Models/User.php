@@ -26,7 +26,6 @@ class User extends Authenticatable
         'blood_group',
         'city',
         'district',
-        'address',
         'weight',
         'date_of_birth',
         'last_donated_date',
@@ -152,7 +151,7 @@ class User extends Authenticatable
         
         $allowedFields = [
             'full_name', 'blood_group', 'city', 'district', 
-            'address', 'weight', 'dob', 'last_donated_date', 
+            'weight', 'dob', 'last_donated_date', 
             'profile_picture', 'email', 'mobile', 'sex', 'pincode'
         ];
 
@@ -161,6 +160,14 @@ class User extends Authenticatable
             if (array_key_exists($field, $data)) {
                 $updates[$field] = $data[$field];
             }
+        }
+        
+        // Map frontend 'address' to database 'full_address'
+        if (array_key_exists('address', $data)) {
+            $updates['full_address'] = $data['address'];
+        }
+        if (array_key_exists('full_address', $data)) {
+            $updates['full_address'] = $data['full_address'];
         }
 
         if (empty($updates)) {
