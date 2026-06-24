@@ -6,6 +6,9 @@ use App\Http\Controllers\DonorController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\EmergencyController;
+use App\Http\Controllers\FeedbackController;
+use App\Http\Controllers\SupportTicketController;
+use App\Http\Controllers\ActivityLogController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -54,6 +57,12 @@ Route::prefix('v1')->group(function () {
         // ─── Complaint Submission Route ─────────────────────────────────────
         Route::post('/admin/complaints', [AdminController::class, 'fileComplaint']);
 
+        // ─── Feedback Routes (public submit, admin management) ──────────────
+        Route::post('/feedback', [FeedbackController::class, 'store']);
+
+        // ─── Support Ticket Routes (user submission) ────────────────────────
+        Route::post('/support/tickets', [SupportTicketController::class, 'store']);
+
         // ─── Admin/Volunteer Shared Routes ──────────────────────────────────
         Route::middleware('jwt.role:admin,volunteer')->group(function () {
             Route::patch('/requests/{id}/verify', [RequestController::class, 'verify']);
@@ -61,6 +70,8 @@ Route::prefix('v1')->group(function () {
 
         // ─── Admin Only Routes ──────────────────────────────────────────────
         Route::middleware('jwt.role:admin')->group(function () {
+
+            // Existing Admin Routes
             Route::get('/admin/complaints', [AdminController::class, 'getComplaints']);
             Route::patch('/admin/complaints/{id}/resolve', [AdminController::class, 'resolveComplaint']);
             Route::patch('/admin/users/{id}/status', [AdminController::class, 'updateUserStatus']);
@@ -69,6 +80,26 @@ Route::prefix('v1')->group(function () {
             Route::patch('/admin/users/{id}/verify', [AdminController::class, 'verifyUser']);
             Route::patch('/admin/users/{id}/reject', [AdminController::class, 'rejectUser']);
             Route::patch('/admin/users/{id}/eligibility', [AdminController::class, 'updateUserEligibility']);
+
+            // ── Feedback Management ──────────────────────────────────────────
+            Route::get('/admin/feedback', [FeedbackController::class, 'index']);
+            Route::post('/admin/feedback/{id}/reply', [FeedbackController::class, 'reply']);
+            Route::patch('/admin/feedback/{id}/status', [FeedbackController::class, 'updateStatus']);
+
+            // ── Support Ticket Management ────────────────────────────────────
+            Route::get('/admin/tickets', [SupportTicketController::class, 'index']);
+            Route::post('/admin/tickets/{id}/reply', [SupportTicketController::class, 'reply']);
+            Route::patch('/admin/tickets/{id}/status', [SupportTicketController::class, 'updateStatus']);
+
+            // ── Activity Logs ────────────────────────────────────────────────
+            Route::get('/admin/activity-logs', [ActivityLogController::class, 'index']);
+            Route::delete('/admin/activity-logs', [ActivityLogController::class, 'clear']);
+
+            // ── Dashboard Stats ──────────────────────────────────────────────
+            Route::get('/admin/stats', [AdminController::class, 'getDashboardStats']);
+
+            // ── Notifications Broadcast ──────────────────────────────────────
+            Route::post('/admin/broadcast', [AdminController::class, 'broadcastNotification']);
         });
     });
 });
