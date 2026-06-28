@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('partners', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('logo');
+            $table->longText('logo');
             $table->string('social_media_type');
             $table->string('social_media_link');
             $table->timestamps();
