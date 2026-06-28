@@ -5,8 +5,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Partner;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Storage;
 
 class PartnerController extends Controller
 {
@@ -31,14 +29,15 @@ class PartnerController extends Controller
     /**
      * Add a new partner.
      * Admin only.
+     * Logo must be a publicly accessible URL (file upload not supported on Railway).
      */
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name'                => 'required|string|max:255',
-            'logo'                => 'required', // can be file or string url
-            'social_media_type'   => 'required|string|max:50',
-            'social_media_link'   => 'required|string|max:500',
+            'name'              => 'required|string|max:255',
+            'logo'              => 'required|string|max:1000',
+            'social_media_type' => 'required|string|max:50',
+            'social_media_link' => 'required|string|max:500',
         ]);
 
         if ($validator->fails()) {
@@ -49,17 +48,9 @@ class PartnerController extends Controller
             ], 422);
         }
 
-        $logoPath = '';
-        if ($request->hasFile('logo')) {
-            $path = $request->file('logo')->store('partners', 'public');
-            $logoPath = '/storage/' . $path;
-        } else {
-            $logoPath = $request->logo;
-        }
-
         $partner = Partner::create([
             'name'              => $request->name,
-            'logo'              => $logoPath,
+            'logo'              => $request->logo,
             'social_media_type' => strtolower($request->social_media_type),
             'social_media_link' => $request->social_media_link,
         ]);
@@ -88,9 +79,10 @@ class PartnerController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'name'                => 'sometimes|required|string|max:255',
-            'social_media_type'   => 'sometimes|required|string|max:50',
-            'social_media_link'   => 'sometimes|required|string|max:500',
+            'name'              => 'sometimes|required|string|max:255',
+            'logo'              => 'sometimes|required|string|max:1000',
+            'social_media_type' => 'sometimes|required|string|max:50',
+            'social_media_link' => 'sometimes|required|string|max:500',
         ]);
 
         if ($validator->fails()) {
@@ -101,31 +93,10 @@ class PartnerController extends Controller
             ], 422);
         }
 
-        if ($request->has('name')) $partner->name = $request->name;
-        if ($request->has('social_media_type')) $partner->social_media_type = strtolower($request->social_media_type);
-        if ($request->has('social_media_link')) $partner->social_media_link = $request->social_media_link;
-
-        if ($request->hasFile('logo')) {
-            // Delete old file if exists
-            if ($partner->logo) {
-                if (str_starts_with($partner->logo, '/storage/')) {
-                    $oldPath = str_replace('/storage/', '', $partner->logo);
-                    if (Storage::disk('public')->exists($oldPath)) {
-                        Storage::disk('public')->delete($oldPath);
-                    }
-                } elseif (str_starts_with($partner->logo, '/uploads/')) {
-                    $oldPath = public_path(ltrim($partner->logo, '/'));
-                    if (File::exists($oldPath)) {
-                        File::delete($oldPath);
-                    }
-                }
-            }
-
-            $path = $request->file('logo')->store('partners', 'public');
-            $partner->logo = '/storage/' . $path;
-        } elseif ($request->has('logo') && is_string($request->logo)) {
-            $partner->logo = $request->logo;
-        }
+        if ($request->filled('name'))              $partner->name              = $request->name;
+        if ($request->filled('logo'))              $partner->logo              = $request->logo;
+        if ($request->filled('social_media_type')) $partner->social_media_type = strtolower($request->social_media_type);
+        if ($request->filled('social_media_link')) $partner->social_media_link = $request->social_media_link;
 
         $partner->save();
         $partner->_id = (string)$partner->id;
@@ -149,21 +120,6 @@ class PartnerController extends Controller
                 'success' => false,
                 'message' => 'Partner not found.'
             ], 404);
-        }
-
-        // Delete logo file from storage
-        if ($partner->logo) {
-            if (str_starts_with($partner->logo, '/storage/')) {
-                $oldPath = str_replace('/storage/', '', $partner->logo);
-                if (Storage::disk('public')->exists($oldPath)) {
-                    Storage::disk('public')->delete($oldPath);
-                }
-            } elseif (str_starts_with($partner->logo, '/uploads/')) {
-                $filePath = public_path(ltrim($partner->logo, '/'));
-                if (File::exists($filePath)) {
-                    File::delete($filePath);
-                }
-            }
         }
 
         $partner->delete();
