@@ -9,6 +9,7 @@ use App\Http\Controllers\EmergencyController;
 use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\SupportTicketController;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\PartnerController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -21,6 +22,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
     Route::get('/location/pincode/{pincode}', [AuthController::class, 'pincodeLookup']);
     Route::post('/test-notification', [NotificationController::class, 'testNotification']);
+    Route::get('/partners', [PartnerController::class, 'index']);
 
     // ─── Authenticated Routes Group ──────────────────────────────────────
     Route::middleware('jwt.auth')->group(function () {
@@ -102,6 +104,11 @@ Route::prefix('v1')->group(function () {
 
             // ── Notifications Broadcast ──────────────────────────────────────
             Route::post('/admin/broadcast', [AdminController::class, 'broadcastNotification']);
+
+            // ── Partners/Collaborators Management ────────────────────────────
+            Route::post('/admin/partners', [PartnerController::class, 'store']);
+            Route::post('/admin/partners/{id}', [PartnerController::class, 'update']);
+            Route::delete('/admin/partners/{id}', [PartnerController::class, 'destroy']);
         });
     });
 });
