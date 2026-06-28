@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Partner;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 
 class PartnerController extends Controller
 {
@@ -50,17 +51,8 @@ class PartnerController extends Controller
 
         $logoPath = '';
         if ($request->hasFile('logo')) {
-            $file = $request->file('logo');
-            $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            
-            // Ensure uploads directory exists
-            $destinationPath = public_path('uploads/partners');
-            if (!File::isDirectory($destinationPath)) {
-                File::makeDirectory($destinationPath, 0777, true, true);
-            }
-            
-            $file->move($destinationPath, $filename);
-            $logoPath = '/uploads/partners/' . $filename;
+            $path = $request->file('logo')->store('partners', 'public');
+            $logoPath = '/storage/' . $path;
         } else {
             $logoPath = $request->logo;
         }
@@ -115,23 +107,22 @@ class PartnerController extends Controller
 
         if ($request->hasFile('logo')) {
             // Delete old file if exists
-            if ($partner->logo && str_starts_with($partner->logo, '/uploads/')) {
-                $oldPath = public_path(ltrim($partner->logo, '/'));
-                if (File::exists($oldPath)) {
-                    File::delete($oldPath);
+            if ($partner->logo) {
+                if (str_starts_with($partner->logo, '/storage/')) {
+                    $oldPath = str_replace('/storage/', '', $partner->logo);
+                    if (Storage::disk('public')->exists($oldPath)) {
+                        Storage::disk('public')->delete($oldPath);
+                    }
+                } elseif (str_starts_with($partner->logo, '/uploads/')) {
+                    $oldPath = public_path(ltrim($partner->logo, '/'));
+                    if (File::exists($oldPath)) {
+                        File::delete($oldPath);
+                    }
                 }
             }
 
-            $file = $request->file('logo');
-            $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $destinationPath = public_path('uploads/partners');
-            
-            if (!File::isDirectory($destinationPath)) {
-                File::makeDirectory($destinationPath, 0777, true, true);
-            }
-            
-            $file->move($destinationPath, $filename);
-            $partner->logo = '/uploads/partners/' . $filename;
+            $path = $request->file('logo')->store('partners', 'public');
+            $partner->logo = '/storage/' . $path;
         } elseif ($request->has('logo') && is_string($request->logo)) {
             $partner->logo = $request->logo;
         }
@@ -161,10 +152,17 @@ class PartnerController extends Controller
         }
 
         // Delete logo file from storage
-        if ($partner->logo && str_starts_with($partner->logo, '/uploads/')) {
-            $filePath = public_path(ltrim($partner->logo, '/'));
-            if (File::exists($filePath)) {
-                File::delete($filePath);
+        if ($partner->logo) {
+            if (str_starts_with($partner->logo, '/storage/')) {
+                $oldPath = str_replace('/storage/', '', $partner->logo);
+                if (Storage::disk('public')->exists($oldPath)) {
+                    Storage::disk('public')->delete($oldPath);
+                }
+            } elseif (str_starts_with($partner->logo, '/uploads/')) {
+                $filePath = public_path(ltrim($partner->logo, '/'));
+                if (File::exists($filePath)) {
+                    File::delete($filePath);
+                }
             }
         }
 
