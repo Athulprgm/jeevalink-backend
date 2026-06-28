@@ -29,13 +29,12 @@ class PartnerController extends Controller
     /**
      * Add a new partner.
      * Admin only.
-     * Logo must be a publicly accessible URL (file upload not supported on Railway).
      */
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'name'              => 'required|string|max:255',
-            'logo'              => 'required|string|max:1000',
+            'logo'              => 'required', // Can be file or string
             'social_media_type' => 'required|string|max:50',
             'social_media_link' => 'required|string|max:500',
         ]);
@@ -48,9 +47,19 @@ class PartnerController extends Controller
             ], 422);
         }
 
+        $logoData = '';
+        if ($request->hasFile('logo')) {
+            $file = $request->file('logo');
+            $mime = $file->getClientMimeType();
+            $base64 = base64_encode(file_get_contents($file->getRealPath()));
+            $logoData = 'data:' . $mime . ';base64,' . $base64;
+        } else {
+            $logoData = $request->logo;
+        }
+
         $partner = Partner::create([
             'name'              => $request->name,
-            'logo'              => $request->logo,
+            'logo'              => $logoData,
             'social_media_type' => strtolower($request->social_media_type),
             'social_media_link' => $request->social_media_link,
         ]);
@@ -78,9 +87,9 @@ class PartnerController extends Controller
             ], 404);
         }
 
+        // We don't make logo required for update, it can be 'sometimes'
         $validator = Validator::make($request->all(), [
             'name'              => 'sometimes|required|string|max:255',
-            'logo'              => 'sometimes|required|string|max:1000',
             'social_media_type' => 'sometimes|required|string|max:50',
             'social_media_link' => 'sometimes|required|string|max:500',
         ]);
@@ -93,10 +102,24 @@ class PartnerController extends Controller
             ], 422);
         }
 
-        if ($request->filled('name'))              $partner->name              = $request->name;
-        if ($request->filled('logo'))              $partner->logo              = $request->logo;
-        if ($request->filled('social_media_type')) $partner->social_media_type = strtolower($request->social_media_type);
-        if ($request->filled('social_media_link')) $partner->social_media_link = $request->social_media_link;
+        if ($request->has('name') || $request->filled('name')) {
+            $partner->name = $request->name;
+        }
+        if ($request->has('social_media_type') || $request->filled('social_media_type')) {
+            $partner->social_media_type = strtolower($request->social_media_type);
+        }
+        if ($request->has('social_media_link') || $request->filled('social_media_link')) {
+            $partner->social_media_link = $request->social_media_link;
+        }
+
+        if ($request->hasFile('logo')) {
+            $file = $request->file('logo');
+            $mime = $file->getClientMimeType();
+            $base64 = base64_encode(file_get_contents($file->getRealPath()));
+            $partner->logo = 'data:' . $mime . ';base64,' . $base64;
+        } elseif ($request->has('logo') && is_string($request->logo)) {
+            $partner->logo = $request->logo;
+        }
 
         $partner->save();
         $partner->_id = (string)$partner->id;
