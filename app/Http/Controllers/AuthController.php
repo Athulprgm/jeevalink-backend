@@ -385,19 +385,26 @@ class AuthController extends Controller
 
         try {
             $resetUrl = env('FRONTEND_URL', 'http://localhost:5173') . '/reset-password?token=' . $token . '&email=' . urlencode($request->email);
-            \Illuminate\Support\Facades\Mail::send('emails.forgot_password', ['resetUrl' => $resetUrl], function ($message) use ($request) {
-                $message->to($request->email)
-                        ->subject('Reset Your JeevaLink Password');
-            });
+            \Illuminate\Support\Facades\Mail::to($request->email)->send(
+                new \App\Mail\ForgotPasswordMail($resetUrl)
+            );
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Password reset link sent to your email.'
+            ]);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::info("Reset link for {$request->email}: $resetUrl");
             \Illuminate\Support\Facades\Log::error("Failed to send reset email: " . $e->getMessage());
+            
+            // Delete the token since email failed
+            \Illuminate\Support\Facades\DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send password reset email. Please try again later.'
+            ], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Password reset link sent to your email.'
-        ]);
     }
 
     /**

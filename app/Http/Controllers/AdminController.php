@@ -448,18 +448,20 @@ class AdminController extends Controller
             'is_verified' => true,
         ]);
 
+        $emailSent = false;
         try {
             $loginUrl = env('FRONTEND_URL', 'http://localhost:5173') . '/login';
             \Illuminate\Support\Facades\Mail::to($user->email)->send(
                 new \App\Mail\VolunteerWelcomeMail($user->full_name, $user->email, $password, $loginUrl)
             );
+            $emailSent = true;
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Failed to send volunteer welcome email: " . $e->getMessage());
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Volunteer added successfully and credentials sent to email.',
+            'message' => $emailSent ? 'Volunteer added successfully and credentials sent to email.' : 'Volunteer added successfully, but failed to send credentials email.',
             'data' => [
                 'user' => User::findById($user->id)
             ]
