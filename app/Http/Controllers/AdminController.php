@@ -369,4 +369,81 @@ class AdminController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Add a volunteer.
+     * Admin only.
+     */
+    public function addVolunteer(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'full_name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'mobile' => 'required|string|max:20',
+            'city' => 'required|string|max:100',
+            'district' => 'required|string|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        if (User::where('email', $request->email)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Email already in use',
+                'errors' => ['email' => ['This email address is already registered.']]
+            ], 409);
+        }
+
+        if (User::where('mobile', $request->mobile)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Mobile number already in use',
+                'errors' => ['mobile' => ['This mobile number is already registered.']]
+            ], 409);
+        }
+
+        $password = \Illuminate\Support\Str::random(10);
+
+        $user = User::create([
+            'full_name' => $request->full_name,
+            'email' => $request->email,
+            'mobile' => $request->mobile,
+            'password_hash' => \Illuminate\Support\Facades\Hash::make($password),
+            'role' => 'volunteer',
+            'blood_group' => 'N/A',
+            'city' => $request->city,
+            'district' => $request->district,
+            'status' => 'Active',
+            'is_verified' => true,
+        ]);
+
+        try {
+            $loginUrl = env('FRONTEND_URL', 'http://localhost:5173') . '/login';
+            \Illuminate\Support\Facades\Mail::send('emails.volunteer_welcome', [
+                'name' => $user->full_name,
+                'email' => $user->email,
+                'password' => $password,
+                'loginUrl' => $loginUrl
+            ], function ($message) use ($user) {
+                $message->to($user->email)
+                        ->subject('Welcome to JeevaLink - Your Volunteer Account');
+            });
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to send volunteer welcome email: " . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Volunteer added successfully and credentials sent to email.',
+            'data' => [
+                'user' => User::findById($user->id)
+            ]
+        ], 201);
+    }
 }

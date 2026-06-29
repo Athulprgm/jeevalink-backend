@@ -21,7 +21,7 @@ class AuthController extends Controller
             'email' => 'required|email|max:255',
             'mobile' => 'required|string|max:20',
             'password' => 'required|string|min:6',
-            'role' => 'required|in:donor,volunteer,hospital,admin',
+            'role' => 'required|in:donor,volunteer,hospital',
             'city' => 'nullable|string|max:100',
             'district' => 'nullable|string|max:100',
             'blood_group' => 'nullable|in:A+,A-,B+,B-,AB+,AB-,O+,O-,N/A',
@@ -385,12 +385,13 @@ class AuthController extends Controller
 
         try {
             $resetUrl = env('FRONTEND_URL', 'http://localhost:5173') . '/reset-password?token=' . $token . '&email=' . urlencode($request->email);
-            \Illuminate\Support\Facades\Mail::raw("Click here to reset your password: $resetUrl", function ($message) use ($request) {
+            \Illuminate\Support\Facades\Mail::send('emails.forgot_password', ['resetUrl' => $resetUrl], function ($message) use ($request) {
                 $message->to($request->email)
                         ->subject('Reset Your JeevaLink Password');
             });
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::info("Reset link for {$request->email}: $resetUrl");
+            \Illuminate\Support\Facades\Log::error("Failed to send reset email: " . $e->getMessage());
         }
 
         return response()->json([

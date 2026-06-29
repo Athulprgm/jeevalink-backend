@@ -17,17 +17,26 @@ class AdminSeeder extends Seeder
      */
     public function run(): void
     {
+        $adminEmail = env('ADMIN_EMAIL');
+        $adminPassword = env('ADMIN_PASSWORD');
+        $adminMobile = env('ADMIN_MOBILE', '9000000001');
+
+        if (!$adminEmail || !$adminPassword) {
+            $this->command->warn('ADMIN_EMAIL or ADMIN_PASSWORD is not set in .env. Skipping admin user creation.');
+            return;
+        }
+
         // Avoid duplicate seeding
-        if (DB::table('users')->where('email', 'admin@jeevalink.org')->exists()) {
+        if (DB::table('users')->where('email', $adminEmail)->exists()) {
             $this->command->info('Admin user already exists. Skipping.');
             return;
         }
 
         DB::table('users')->insert([
             'full_name'              => 'JeevaLink Admin',
-            'email'                  => 'admin@jeevalink.org',
-            'mobile'                 => '9000000001',
-            'password_hash'          => Hash::make('Admin@2026'),
+            'email'                  => $adminEmail,
+            'mobile'                 => $adminMobile,
+            'password_hash'          => Hash::make($adminPassword),
             'role'                   => 'admin',
             'blood_group'            => 'N/A',
             'city'                   => 'Kochi',
@@ -43,7 +52,7 @@ class AdminSeeder extends Seeder
         ]);
 
         $this->command->info('✅ Admin user created successfully!');
-        $this->command->info('   Email    : admin@jeevalink.org');
-        $this->command->info('   Password : Admin@2026');
+        $this->command->info('   Email    : ' . $adminEmail);
+        $this->command->info('   Password : (hidden)');
     }
 }

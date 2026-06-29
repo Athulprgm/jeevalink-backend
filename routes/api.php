@@ -76,6 +76,7 @@ Route::prefix('v1')->group(function () {
         Route::middleware('jwt.role:admin')->group(function () {
 
             // Existing Admin Routes
+            Route::post('/admin/volunteers', [AdminController::class, 'addVolunteer']);
             Route::get('/admin/complaints', [AdminController::class, 'getComplaints']);
             Route::patch('/admin/complaints/{id}/resolve', [AdminController::class, 'resolveComplaint']);
             Route::patch('/admin/users/{id}/status', [AdminController::class, 'updateUserStatus']);

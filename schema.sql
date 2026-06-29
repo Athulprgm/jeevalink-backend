@@ -4,6 +4,7 @@
 DROP TABLE IF EXISTS complaints CASCADE;
 DROP TABLE IF EXISTS notifications CASCADE;
 DROP TABLE IF EXISTS blood_requests CASCADE;
+DROP TABLE IF EXISTS password_reset_tokens CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
 -- Drop custom types if they exist
@@ -65,6 +66,15 @@ CREATE INDEX idx_users_blood_group ON users (blood_group);
 CREATE INDEX idx_users_district ON users (district);
 CREATE INDEX idx_users_city ON users (city);
 CREATE INDEX idx_users_status ON users (status);
+
+-- --------------------------------------------------------
+-- Table structure for table password_reset_tokens
+-- --------------------------------------------------------
+CREATE TABLE password_reset_tokens (
+  email VARCHAR(255) PRIMARY KEY,
+  token VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NULL
+);
 
 -- --------------------------------------------------------
 -- Table structure for table notification_logs
