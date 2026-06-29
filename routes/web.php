@@ -17,11 +17,3 @@ Route::get('/health', function () {
     ]);
 });
 
-Route::get('/test-email', function () {
-    return view('emails.volunteer_welcome', [
-        'name' => 'John Doe',
-        'email' => 'athulkrishnacpd@gmail.com',
-        'password' => 'SecurePass123!',
-        'loginUrl' => 'http://localhost:5173/login'
-    ]);
-});
