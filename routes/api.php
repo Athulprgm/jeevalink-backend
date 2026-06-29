@@ -81,6 +81,8 @@ Route::prefix('v1')->group(function () {
             Route::patch('/admin/complaints/{id}/resolve', [AdminController::class, 'resolveComplaint']);
             Route::patch('/admin/users/{id}/status', [AdminController::class, 'updateUserStatus']);
             Route::get('/admin/users', [AdminController::class, 'getUsers']);
+            Route::delete('/admin/users/{id}', [AdminController::class, 'deleteUser']);
+
             Route::post('/admin/users/{id}/warn', [AdminController::class, 'warnUser']);
             Route::patch('/admin/users/{id}/verify', [AdminController::class, 'verifyUser']);
             Route::patch('/admin/users/{id}/reject', [AdminController::class, 'rejectUser']);

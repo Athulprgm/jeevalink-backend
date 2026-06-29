@@ -207,6 +207,31 @@ class AdminController extends Controller
     }
 
     /**
+     * Delete a user.
+     * Admin only.
+     */
+    public function deleteUser(Request $request, $id)
+    {
+        $targetUser = User::find((int)$id);
+        if (!$targetUser) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found.',
+                'errors' => []
+            ], 404);
+        }
+
+        $targetUser->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User deleted successfully.',
+            'data' => []
+        ]);
+    }
+
+
+    /**
      * Warn a user.
      * Admin only.
      */
