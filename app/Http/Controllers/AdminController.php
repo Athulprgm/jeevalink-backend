@@ -450,15 +450,9 @@ class AdminController extends Controller
 
         try {
             $loginUrl = env('FRONTEND_URL', 'http://localhost:5173') . '/login';
-            \Illuminate\Support\Facades\Mail::send('emails.volunteer_welcome', [
-                'name' => $user->full_name,
-                'email' => $user->email,
-                'password' => $password,
-                'loginUrl' => $loginUrl
-            ], function ($message) use ($user) {
-                $message->to($user->email)
-                        ->subject('Welcome to JeevaLink - Your Volunteer Account');
-            });
+            \Illuminate\Support\Facades\Mail::to($user->email)->send(
+                new \App\Mail\VolunteerWelcomeMail($user->full_name, $user->email, $password, $loginUrl)
+            );
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Failed to send volunteer welcome email: " . $e->getMessage());
         }
